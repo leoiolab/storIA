@@ -1,0 +1,194 @@
+.chapters-list {
+  width: 320px;
+  background: #232323;
+  border-right: 1px solid #3a3a3a;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chapters-list .list-header {
+  padding: 20px;
+  border-bottom: 1px solid #3a3a3a;
+  background: #252525;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chapters-list .list-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.add-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #007aff;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.add-button:hover {
+  background: #0066dd;
+}
+
+.chapters-list .list-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.empty-state-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-state-large p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.add-button-large {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #007aff;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.add-button-large:hover {
+  background: #0066dd;
+}
+
+.chapters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chapter-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  background: #2a2a2a;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chapter-item:hover {
+  background: #303030;
+  border-color: #3a3a3a;
+}
+
+.chapter-item.active {
+  background: #1a3a5a;
+  border-color: #007aff;
+}
+
+.chapter-drag-handle {
+  color: #555;
+  cursor: grab;
+  padding-top: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chapter-item:hover .chapter-drag-handle {
+  opacity: 1;
+}
+
+.chapter-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.chapter-number {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chapter-word-count {
+  font-size: 11px;
+  color: #666;
+}
+
+.chapter-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-preview {
+  font-size: 12px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.chapter-item .delete-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #666;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  padding: 0;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.chapter-item:hover .delete-button {
+  opacity: 1;
+}
+
+.chapter-item .delete-button:hover {
+  background: #ff3b30;
+  color: white;
+}
+
+
+

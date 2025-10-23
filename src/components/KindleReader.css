@@ -1,0 +1,475 @@
+/* Kindle-Style Reader - Authentic E-ink Experience */
+
+.kindle-reader {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: background-color 0.3s ease;
+  overflow: hidden;
+  font-family: 'Bookerly', 'Amazon Ember', Georgia, serif;
+}
+
+/* Themes - Kindle-accurate colors */
+.theme-white {
+  background-color: #fafafa;
+  color: #0f1419;
+}
+
+.theme-sepia {
+  background-color: #fae8d0;
+  color: #3d2912;
+}
+
+.theme-black {
+  background-color: #0f1419;
+  color: #cccccc;
+}
+
+/* Top Menu Bar */
+.kindle-menu-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 1000;
+  animation: slideDown 0.2s ease;
+}
+
+.theme-black .kindle-menu-bar {
+  background: rgba(20, 20, 20, 0.98);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.menu-left, .menu-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menu-title {
+  font-size: 16px;
+  font-weight: 600;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  border-radius: 4px;
+}
+
+.menu-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.theme-black .menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Settings Panel */
+.kindle-settings {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-top: 1px solid #ddd;
+  padding: 24px;
+  z-index: 1000;
+  max-height: 50vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+.theme-black .kindle-settings {
+  background: #1a1a1a;
+  border-top-color: #333;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.settings-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.settings-header button {
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  opacity: 0.6;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.settings-header button:hover {
+  opacity: 1;
+}
+
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.settings-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.theme-selector,
+.size-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-option,
+.size-option {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #ddd;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.theme-black .theme-option,
+.theme-black .size-option {
+  border-color: #333;
+}
+
+.theme-option.theme-white { background: #fafafa; color: #0f1419; }
+.theme-option.theme-sepia { background: #fae8d0; color: #3d2912; }
+.theme-option.theme-black { background: #0f1419; color: #cccccc; }
+
+.theme-option.active,
+.size-option.active {
+  border-color: #000;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.theme-black .theme-option.active,
+.theme-black .size-option.active {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.size-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.size-option {
+  min-width: 44px;
+  font-weight: 600;
+}
+
+.size-option:nth-child(1) { font-size: 12px; }
+.size-option:nth-child(2) { font-size: 14px; }
+.size-option:nth-child(3) { font-size: 16px; }
+.size-option:nth-child(4) { font-size: 18px; }
+.size-option:nth-child(5) { font-size: 20px; }
+.size-option:nth-child(6) { font-size: 24px; }
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ddd;
+  border-radius: 2px;
+  outline: none;
+}
+
+.theme-black input[type="range"] {
+  background: #333;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #000;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.theme-black input[type="range"]::-webkit-slider-thumb {
+  background: #fff;
+}
+
+/* Main Page Container */
+.kindle-page-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.kindle-page {
+  max-width: 650px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Font Sizes - Kindle-accurate */
+.font-xs { font-size: 12px; }
+.font-sm { font-size: 14px; }
+.font-md { font-size: 16px; }
+.font-lg { font-size: 19px; }
+.font-xl { font-size: 22px; }
+.font-xxl { font-size: 26px; }
+
+/* Chapter Header */
+.chapter-header-kindle {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid currentColor;
+  opacity: 0.2;
+}
+
+.chapter-number-kindle {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+.chapter-title-kindle {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+  font-family: 'Bookerly', Georgia, serif;
+}
+
+/* Page Content */
+.page-text {
+  flex: 1;
+  overflow: hidden;
+}
+
+.kindle-paragraph {
+  margin: 0 0 1em 0;
+  text-align: justify;
+  text-indent: 1.5em;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+.kindle-paragraph:first-child {
+  text-indent: 0;
+}
+
+/* Page Footer */
+.page-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7em;
+  opacity: 0.4;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+}
+
+/* Progress Bar */
+.kindle-progress {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-black .kindle-progress {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: #000;
+  transition: width 0.3s ease;
+}
+
+.theme-black .progress-fill {
+  background: #fff;
+}
+
+/* Page Flip Animation */
+.flipping {
+  animation: pageFlip 0.3s ease;
+}
+
+.flip-forward {
+  animation: pageFlipForward 0.3s ease;
+}
+
+.flip-backward {
+  animation: pageFlipBackward 0.3s ease;
+}
+
+@keyframes pageFlipForward {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateX(-30px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes pageFlipBackward {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateX(30px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Tap Instructions */
+.tap-hint {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 32px;
+  font-size: 12px;
+  opacity: 0.3;
+  animation: fadeOut 5s ease forwards;
+  pointer-events: none;
+  color: currentColor;
+}
+
+@keyframes fadeOut {
+  0%, 80% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Empty State */
+.kindle-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.4;
+}
+
+.kindle-empty svg {
+  margin-bottom: 24px;
+}
+
+.kindle-empty h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.kindle-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .kindle-page-container {
+    padding: 1rem !important;
+  }
+
+  .kindle-page {
+    max-width: 100%;
+  }
+
+  .tap-hint {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+/* Improve readability on high DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .kindle-reader {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+

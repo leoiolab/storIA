@@ -1,0 +1,195 @@
+.story-arc-view {
+  padding: 20px;
+}
+
+.story-arc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  color: #666;
+}
+
+.story-arc-empty svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.story-arc-empty p {
+  font-size: 14px;
+}
+
+.arc-header {
+  margin-bottom: 32px;
+}
+
+.arc-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.arc-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #007aff;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.arc-timeline {
+  position: relative;
+  padding: 0 0 0 40px;
+}
+
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.timeline-item:last-child .marker-line {
+  display: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.marker-dot {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #007aff;
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 0 0 4px #1a1a1a;
+  z-index: 1;
+}
+
+.marker-line {
+  width: 2px;
+  flex: 1;
+  background: #3a3a3a;
+  margin-top: 8px;
+  min-height: 40px;
+}
+
+.timeline-content {
+  flex: 1;
+  padding: 8px 20px;
+  background: #232323;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.timeline-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.timeline-meta {
+  font-size: 12px;
+  color: #888;
+}
+
+.timeline-synopsis {
+  font-size: 13px;
+  color: #b0b0b0;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.timeline-plot-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plot-point-badge {
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.arc-legend {
+  margin-top: 40px;
+  padding: 20px;
+  background: #232323;
+  border-radius: 12px;
+}
+
+.arc-legend h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-label {
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+
+

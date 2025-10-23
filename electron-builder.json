@@ -1,0 +1,22 @@
+{
+  "appId": "com.authorio.app",
+  "productName": "Authorio",
+  "directories": {
+    "output": "out"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-react/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.productivity",
+    "target": [
+      "dmg",
+      "zip"
+    ],
+    "icon": "assets/icon.icns"
+  }
+}
+
+
+
