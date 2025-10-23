@@ -1,15 +1,8 @@
 {
   "version": 2,
   "name": "storia",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
   "routes": [
     {
       "src": "/(.*)",
