@@ -58,7 +58,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/authorio';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/storia';
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
@@ -66,7 +66,7 @@ mongoose.connect(MONGODB_URI)
     console.log(`📦 Database: ${mongoose.connection.name}`);
     
     app.listen(PORT, () => {
-      console.log(`🚀 Authorio Server running on port ${PORT}`);
+      console.log(`🚀 StorIA Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
     });

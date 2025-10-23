@@ -1,7 +1,7 @@
 {
-  "name": "authorio-server",
+  "name": "storia-server",
   "version": "1.0.0",
-  "description": "Authorio cloud backend server",
+  "description": "StorIA cloud backend server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
