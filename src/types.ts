@@ -27,6 +27,8 @@ export interface Chapter {
   order: number;
   synopsis?: string;
   notes?: string;
+  wordCount?: number;
+  plotPoints?: PlotPoint[];
   createdAt: number;
   updatedAt: number;
 }
@@ -36,6 +38,7 @@ export interface PlotPoint {
   title: string;
   description: string;
   chapterId?: string;
+  characterIds?: string[];
   order: number;
   category: 'setup' | 'conflict' | 'resolution' | 'climax' | 'other';
 }
@@ -58,6 +61,7 @@ export interface BookMetadata {
   title: string;
   author: string;
   genre: string;
+  subtitle?: string;
   targetWordCount?: number;
   synopsis?: string;
   themes?: string[];
@@ -70,6 +74,7 @@ export interface Book {
   chapters: Chapter[];
   plotPoints: PlotPoint[];
   timeline: Timeline;
+  settings?: any;
   createdAt: number;
   updatedAt: number;
 }

@@ -41,7 +41,7 @@ export class CloudStorageService {
   ): Promise<any> {
     const token = this.getToken();
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
@@ -255,8 +255,8 @@ export class CloudStorageService {
       id: char._id,
       name: char.name,
       type: char.type,
-      quickDescription: char.quickDescription || '',
-      fullBio: char.fullBio || '',
+      description: char.quickDescription || char.description || '',
+      biography: char.fullBio || char.biography || '',
       age: char.age,
       role: char.role,
       relationships: char.relationships || [],

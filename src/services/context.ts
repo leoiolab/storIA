@@ -1,4 +1,4 @@
-import { Book, Character, Chapter, PlotPoint, TimelineEvent } from '../types';
+import { Book } from '../types';
 
 export interface ContextSnapshot {
   id: string;
@@ -237,7 +237,7 @@ class ContextManager {
   }
 
   // Get recent changes that might affect an entity
-  getRelevantChanges(entityId: string, book: Book): ContextSnapshot[] {
+  getRelevantChanges(entityId: string, _book: Book): ContextSnapshot[] {
     const relevant: ContextSnapshot[] = [];
     
     for (const snapshot of this.history.snapshots) {

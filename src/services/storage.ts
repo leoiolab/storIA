@@ -1,4 +1,4 @@
-import { AppData, Book, Character, Chapter, BookMetadata } from '../types';
+import { AppData } from '../types';
 
 const STORAGE_KEY = 'authorio_app_data';
 
