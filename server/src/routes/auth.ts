@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import User from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 
@@ -33,11 +33,17 @@ router.post('/register',
       await user.save();
 
       // Generate token
-      const secret = process.env.JWT_SECRET!;
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET is not configured');
+      }
+      const signOptions: SignOptions = {
+        expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as SignOptions['expiresIn']
+      };
       const token = jwt.sign(
         { userId: user._id },
         secret,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        signOptions
       );
 
       res.status(201).json({
@@ -83,11 +89,17 @@ router.post('/login',
       }
 
       // Generate token
-      const secret = process.env.JWT_SECRET!;
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET is not configured');
+      }
+      const signOptions: SignOptions = {
+        expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as SignOptions['expiresIn']
+      };
       const token = jwt.sign(
         { userId: user._id },
         secret,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        signOptions
       );
 
       res.json({
