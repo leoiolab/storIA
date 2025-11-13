@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Book, Chapter } from '../types';
 import { ChevronLeft, ChevronRight, Settings, BookOpen, X, Menu } from 'lucide-react';
 import './KindleReader.css';
@@ -26,6 +26,18 @@ export function KindleReader({ book }: KindleReaderProps) {
 
   const chapters = book.chapters.sort((a, b) => a.order - b.order);
   const currentChapter = chapters[currentChapterIndex];
+
+  const getWordsPerPage = useCallback(() => {
+    switch (fontSize) {
+      case 'xs': return 400;
+      case 'sm': return 350;
+      case 'md': return 300;
+      case 'lg': return 250;
+      case 'xl': return 200;
+      case 'xxl': return 150;
+      default: return 300;
+    }
+  }, [fontSize]);
 
   // Paginate content
   useEffect(() => {
@@ -55,19 +67,7 @@ export function KindleReader({ book }: KindleReaderProps) {
     };
 
     paginateContent();
-  }, [currentChapter, fontSize, lineSpacing, margins]);
-
-  const getWordsPerPage = () => {
-    switch (fontSize) {
-      case 'xs': return 400;
-      case 'sm': return 350;
-      case 'md': return 300;
-      case 'lg': return 250;
-      case 'xl': return 200;
-      case 'xxl': return 150;
-      default: return 300;
-    }
-  };
+  }, [currentChapter, fontSize, lineSpacing, margins, getWordsPerPage]);
 
   const goToNextPage = () => {
     if (currentPage < pages.length - 1) {
