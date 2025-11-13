@@ -1,4 +1,4 @@
-import { Book, Character, Chapter, BookMetadata } from '../types';
+import { Book, Character, Chapter, BookMetadata, PlotPoint, Timeline } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -133,6 +133,8 @@ export class CloudStorageService {
       ...this.mapProjectToBook(project),
       characters,
       chapters,
+      plotPoints: project.plotPoints ? this.mapPlotPointsFromAPI(project.plotPoints, id) : [],
+      timeline: this.mapTimelineFromAPI(project.timeline, id),
     };
   }
 
@@ -146,6 +148,8 @@ export class CloudStorageService {
       ...this.mapProjectToBook(project),
       characters: [],
       chapters: [],
+      plotPoints: [],
+      timeline: this.mapTimelineFromAPI(project.timeline, project._id),
     };
   }
 
@@ -175,7 +179,20 @@ export class CloudStorageService {
   static async createCharacter(projectId: string, character: Omit<Character, 'id'>): Promise<Character> {
     const created = await this.request('/characters', {
       method: 'POST',
-      body: JSON.stringify({ ...character, projectId }),
+      body: JSON.stringify({
+        projectId,
+        name: character.name,
+        type: character.type,
+        quickDescription: character.description,
+        fullBio: character.biography,
+        age: character.age,
+        role: character.role,
+        relationships: character.relationships?.map(rel => ({
+          characterId: rel.targetCharacterId,
+          type: rel.relationshipType,
+          description: rel.description,
+        })) || []
+      }),
     });
 
     return this.mapCharacterFromAPI(created);
@@ -184,7 +201,19 @@ export class CloudStorageService {
   static async updateCharacter(id: string, character: Partial<Character>): Promise<Character> {
     const updated = await this.request(`/characters/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(character),
+      body: JSON.stringify({
+        name: character.name,
+        type: character.type,
+        quickDescription: character.description,
+        fullBio: character.biography,
+        age: character.age,
+        role: character.role,
+        relationships: character.relationships?.map(rel => ({
+          characterId: rel.targetCharacterId,
+          type: rel.relationshipType,
+          description: rel.description,
+        }))
+      }),
     });
 
     return this.mapCharacterFromAPI(updated);
@@ -203,7 +232,18 @@ export class CloudStorageService {
   static async createChapter(projectId: string, chapter: Omit<Chapter, 'id'>): Promise<Chapter> {
     const created = await this.request('/chapters', {
       method: 'POST',
-      body: JSON.stringify({ ...chapter, projectId }),
+      body: JSON.stringify({
+        projectId,
+        title: chapter.title,
+        content: chapter.content,
+        synopsis: chapter.synopsis,
+        notes: chapter.notes,
+        order: chapter.order,
+        plotPoints: chapter.plotPoints?.map(point => ({
+          category: point.category === 'other' ? 'setup' : point.category,
+          description: point.description,
+        })) || []
+      }),
     });
 
     return this.mapChapterFromAPI(created);
@@ -212,7 +252,17 @@ export class CloudStorageService {
   static async updateChapter(id: string, chapter: Partial<Chapter>): Promise<Chapter> {
     const updated = await this.request(`/chapters/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(chapter),
+      body: JSON.stringify({
+        title: chapter.title,
+        content: chapter.content,
+        synopsis: chapter.synopsis,
+        notes: chapter.notes,
+        order: chapter.order,
+        plotPoints: chapter.plotPoints?.map(point => ({
+          category: point.category === 'other' ? 'setup' : point.category,
+          description: point.description,
+        }))
+      }),
     });
 
     return this.mapChapterFromAPI(updated);
@@ -233,20 +283,30 @@ export class CloudStorageService {
 
   // Mappers
   private static mapProjectToBook(project: any): Book {
+    const createdAt = project.createdAt ? new Date(project.createdAt).getTime() : Date.now();
+    const updatedAt = project.updatedAt ? new Date(project.updatedAt).getTime() : createdAt;
     return {
       id: project._id,
       metadata: {
-        title: project.metadata?.title || 'Untitled',
+        title: project.metadata?.title || project.name || 'Untitled',
         subtitle: project.metadata?.subtitle,
         author: project.metadata?.author || '',
         genre: project.metadata?.genre,
         synopsis: project.metadata?.synopsis,
-        themes: project.metadata?.themes,
+        themes: Array.isArray(project.metadata?.themes)
+          ? project.metadata.themes
+          : project.metadata?.themes
+            ? String(project.metadata.themes).split(',').map((theme: string) => theme.trim()).filter(Boolean)
+            : undefined,
         targetWordCount: project.metadata?.targetWordCount,
       },
       characters: [],
       chapters: [],
-      settings: project.settings,
+      plotPoints: [],
+      timeline: this.mapTimelineFromAPI(project.timeline, project._id),
+      settings: project.settings || {},
+      createdAt,
+      updatedAt,
     };
   }
 
@@ -259,7 +319,13 @@ export class CloudStorageService {
       biography: char.fullBio || char.biography || '',
       age: char.age,
       role: char.role,
-      relationships: char.relationships || [],
+      relationships: (char.relationships || []).map((rel: any) => ({
+        targetCharacterId: rel.characterId,
+        relationshipType: rel.type,
+        description: rel.description,
+      })),
+      createdAt: char.createdAt ? new Date(char.createdAt).getTime() : Date.now(),
+      updatedAt: char.updatedAt ? new Date(char.updatedAt).getTime() : Date.now(),
     };
   }
 
@@ -271,10 +337,43 @@ export class CloudStorageService {
       synopsis: chapter.synopsis,
       notes: chapter.notes,
       order: chapter.order,
-      plotPoints: chapter.plotPoints || [],
+      plotPoints: this.mapPlotPointsFromAPI(chapter.plotPoints, chapter._id),
       wordCount: chapter.wordCount || 0,
+      createdAt: chapter.createdAt ? new Date(chapter.createdAt).getTime() : Date.now(),
+      updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  private static mapPlotPointsFromAPI(points: any[] = [], parentId: string): PlotPoint[] {
+    return points.map((point, index) => ({
+      id: point._id || `${parentId}-plot-${index}`,
+      title: point.title || point.description?.slice(0, 40) || 'Plot Point',
+      description: point.description || '',
+      chapterId: parentId,
+      characterIds: point.characterIds || [],
+      order: typeof point.order === 'number' ? point.order : index,
+      category: (point.category as PlotPoint['category']) || 'other',
+    }));
+  }
+
+  private static mapTimelineFromAPI(timeline: any, projectId: string): Timeline {
+    if (!timeline) {
+      return { id: `${projectId}-timeline`, events: [] };
+    }
+
+    return {
+      id: timeline._id || `${projectId}-timeline`,
+      events: Array.isArray(timeline.events)
+        ? timeline.events.map((event: any) => ({
+            id: event._id || `${timeline._id}-event-${Math.random().toString(36).slice(2)}`,
+            title: event.title || 'Timeline Event',
+            description: event.description || '',
+            timestamp: event.timestamp || '',
+            chapterId: event.chapterId,
+            characterIds: event.characterIds || [],
+          }))
+        : [],
     };
   }
 }
-
 

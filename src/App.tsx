@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar, { View } from './components/Sidebar';
 import ProjectSwitcher from './components/ProjectSwitcher';
 import CharactersList from './components/CharactersList';
@@ -17,9 +17,7 @@ import SaveStatus from './components/SaveStatus';
 import AuthScreen from './components/AuthScreen';
 import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, PlotPoint, Timeline } from './types';
 import { initializeAI, isAIConfigured } from './services/ai';
-import { StorageService } from './services/storage';
 import { CloudStorageService, AuthUser } from './services/cloudStorage';
-import { debugStorage } from './utils/debug';
 import './App.css';
 
 function App() {
@@ -43,78 +41,26 @@ function App() {
   const [lastSaved, setLastSaved] = useState<Date | undefined>();
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   const [showAgent, setShowAgent] = useState(false);
+  const [isLoadingBooks, setIsLoadingBooks] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
-      // TEMP: Skip cloud auth for local development
-      // Comment out these lines to enable cloud mode
-      setAuthChecked(true);
-      // Set a dummy user to bypass auth
-      setUser({ id: 'local', email: 'local@authorio.app', name: 'Local User', token: 'local' });
-      
-      // Load from localStorage instead
-      const savedData = StorageService.loadData();
-      if (savedData && StorageService.validateData(savedData)) {
-        console.log('Loaded saved data:', savedData);
-        setAppData(savedData);
-        
-      } else {
-        console.log('No saved data, creating new book');
-        // Create initial book inline
-        const newBook: Book = {
-          id: Date.now().toString(),
-          metadata: {
-            title: 'Untitled Book',
-            author: 'Local User',
-            genre: '',
-          },
-          characters: [],
-          chapters: [],
-          plotPoints: [],
-          timeline: {
-            id: Date.now().toString(),
-            events: [],
-          },
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-
-        setAppData({
-          books: [newBook],
-          currentBookId: newBook.id,
-          aiConfig: {
-            provider: 'none',
-            apiKey: '',
-            model: 'gpt-4-turbo-preview',
-          },
-        });
-      }
-      return;
-      
-      /* CLOUD MODE - Uncomment to enable:
-      if (CloudStorageService.isAuthenticated()) {
-        try {
+      try {
+        if (CloudStorageService.isAuthenticated()) {
           const currentUser = await CloudStorageService.getCurrentUser();
           setUser(currentUser);
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          CloudStorageService.clearToken();
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        CloudStorageService.clearToken();
+      } finally {
+        setAuthChecked(true);
       }
-      setAuthChecked(true);
-      */
     };
 
     checkAuth();
   }, []);
-
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    if (appData.books.length > 0) {
-      StorageService.saveData(appData);
-    }
-  }, [appData]);
 
   // Save agent messages to localStorage
   useEffect(() => {
@@ -147,89 +93,125 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // Load data from cloud when authenticated (DISABLED FOR LOCAL MODE)
-  /*
   useEffect(() => {
     if (user) {
       loadProjects();
-    }
-  }, [user]);
-  */
-
-  const loadProjects = async () => {
-    try {
-      const projects = await CloudStorageService.getProjects();
+    } else {
       setAppData(prev => ({
         ...prev,
-        books: projects,
-        currentBookId: projects.length > 0 ? projects[0].id : null,
+        books: [],
+        currentBookId: null,
       }));
+      setSelectedCharacter(null);
+      setSelectedChapter(null);
+    }
+  }, [user, loadProjects]);
+
+  const loadProjects = useCallback(async () => {
+    if (!user) return;
+
+    setIsLoadingBooks(true);
+    setSaveStatus('saving');
+
+    try {
+      const projects = await CloudStorageService.getProjects();
+      setSelectedCharacter(null);
+      setSelectedChapter(null);
 
       if (projects.length === 0) {
-        // Create first project
-        await createNewBook();
-      } else if (projects.length > 0) {
-        // Load the first project's details
-        const firstProject = await CloudStorageService.getProject(projects[0].id);
+        const defaultMetadata: BookMetadata = {
+          title: 'Untitled Book',
+          author: user.name || '',
+          genre: '',
+        };
+        const newProject = await CloudStorageService.createProject(defaultMetadata.title, defaultMetadata);
+
         setAppData(prev => ({
           ...prev,
-          books: [firstProject, ...projects.slice(1)],
-          currentBookId: firstProject.id,
+          books: [newProject],
+          currentBookId: newProject.id,
+        }));
+        setView('metadata');
+      } else {
+        const [firstProject, ...otherProjects] = projects;
+        const detailedFirst = await CloudStorageService.getProject(firstProject.id);
+
+        setAppData(prev => ({
+          ...prev,
+          books: [detailedFirst, ...otherProjects],
+          currentBookId: detailedFirst.id,
         }));
       }
+
+      setSaveStatus('saved');
+      setLastSaved(new Date());
     } catch (error) {
       console.error('Failed to load projects:', error);
+      setSaveStatus('error');
+    } finally {
+      setIsLoadingBooks(false);
+    }
+  }, [user]);
+
+  const handleSelectBook = async (bookId: string) => {
+    if (!user || bookId === appData.currentBookId) return;
+
+    setIsLoadingBooks(true);
+    setSaveStatus('saving');
+
+    try {
+      const project = await CloudStorageService.getProject(bookId);
+
+      setAppData(prev => {
+        const remaining = prev.books.filter(book => book.id !== bookId);
+        return {
+          ...prev,
+          books: [project, ...remaining],
+          currentBookId: bookId,
+        };
+      });
+      setSelectedCharacter(null);
+      setSelectedChapter(null);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to select project:', error);
+      setSaveStatus('error');
+    } finally {
+      setIsLoadingBooks(false);
     }
   };
 
   const currentBook = appData.books.find(b => b.id === appData.currentBookId) || null;
 
   const createNewBook = async () => {
-    // LOCAL MODE: Create book locally
-    const newBook: Book = {
-      id: Date.now().toString(),
-      metadata: {
-        title: 'Untitled Book',
-        author: user?.name || '',
-        genre: '',
-      },
-      characters: [],
-      chapters: [],
-      plotPoints: [],
-      timeline: {
-        id: Date.now().toString(),
-        events: [],
-      },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
+    if (!user) return;
 
-    setAppData(prev => ({
-      ...prev,
-      books: [...prev.books, newBook],
-      currentBookId: newBook.id,
-    }));
-    setView('metadata');
-    
-    /* CLOUD MODE - Uncomment to enable:
+    setSaveStatus('saving');
+
     try {
-      const newProject = await CloudStorageService.createProject('Untitled Book', {
+      const metadata: BookMetadata = {
         title: 'Untitled Book',
-        author: user?.name || '',
+        author: user.name || '',
         genre: '',
-      });
+      };
 
-      console.log('Creating new project:', newProject);
+      const newProject = await CloudStorageService.createProject(metadata.title, metadata);
+
       setAppData(prev => ({
         ...prev,
-        books: [...prev.books, newProject],
+        books: [newProject, ...prev.books.filter(book => book.id !== newProject.id)],
         currentBookId: newProject.id,
       }));
+      setSelectedCharacter(null);
+      setSelectedChapter(null);
       setView('metadata');
+      setSaveStatus('saved');
+      setLastSaved(new Date());
     } catch (error) {
       console.error('Failed to create project:', error);
+      setSaveStatus('error');
     }
-    */
   };
 
   const updateCurrentBook = (updater: (book: Book) => Book) => {
@@ -242,89 +224,234 @@ function App() {
           : book
       );
       
-      const updatedData = {
+      return {
         ...prev,
         books: updatedBooks,
       };
-      
-      console.log('Updating current book:', updatedData);
-      return updatedData;
     });
   };
 
-  const handleAddCharacter = (character: Character) => {
-    updateCurrentBook(book => ({
-      ...book,
-      characters: [...book.characters, character],
-    }));
-    setSelectedCharacter(character);
-  };
+  const handleAddCharacter = async (character: Character) => {
+    if (!currentBook) return;
 
-  const handleUpdateCharacter = (updatedCharacter: Character) => {
-    console.log('Updating character:', updatedCharacter);
-    updateCurrentBook(book => ({
-      ...book,
-      characters: book.characters.map(c =>
-        c.id === updatedCharacter.id ? updatedCharacter : c
-      ),
-    }));
-    setSelectedCharacter(updatedCharacter);
-  };
+    setSaveStatus('saving');
 
-  const handleDeleteCharacter = (id: string) => {
-    updateCurrentBook(book => ({
-      ...book,
-      characters: book.characters.filter(c => c.id !== id),
-    }));
-    if (selectedCharacter?.id === id) {
-      setSelectedCharacter(null);
+    try {
+      const payload: Omit<Character, 'id'> = {
+        name: character.name,
+        type: character.type,
+        description: character.description,
+        biography: character.biography,
+        characterArc: character.characterArc,
+        age: character.age,
+        role: character.role,
+        relationships: character.relationships,
+        createdAt: character.createdAt,
+        updatedAt: character.updatedAt,
+      };
+
+      const created = await CloudStorageService.createCharacter(currentBook.id, payload);
+
+      updateCurrentBook(book => ({
+        ...book,
+        characters: [...book.characters, created],
+      }));
+      setSelectedCharacter(created);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to add character:', error);
+      setSaveStatus('error');
     }
   };
 
-  const handleAddChapter = (chapter: Chapter) => {
-    updateCurrentBook(book => ({
-      ...book,
-      chapters: [...book.chapters, chapter],
-    }));
-    setSelectedChapter(chapter);
-  };
+  const handleUpdateCharacter = async (character: Character) => {
+    if (!currentBook) return;
 
-  const handleUpdateChapter = (updatedChapter: Chapter) => {
-    console.log('Updating chapter:', updatedChapter);
-    updateCurrentBook(book => ({
-      ...book,
-      chapters: book.chapters.map(c =>
-        c.id === updatedChapter.id ? updatedChapter : c
-      ),
-    }));
-    setSelectedChapter(updatedChapter);
-  };
+    setSaveStatus('saving');
 
-  const handleDeleteChapter = (id: string) => {
-    updateCurrentBook(book => ({
-      ...book,
-      chapters: book.chapters.filter(c => c.id !== id),
-    }));
-    if (selectedChapter?.id === id) {
-      setSelectedChapter(null);
+    try {
+      const updated = await CloudStorageService.updateCharacter(character.id, character);
+
+      updateCurrentBook(book => ({
+        ...book,
+        characters: book.characters.map(c =>
+          c.id === updated.id ? updated : c
+        ),
+      }));
+      setSelectedCharacter(updated);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to update character:', error);
+      setSaveStatus('error');
     }
   };
 
-  const handleUpdateMetadata = (metadata: BookMetadata) => {
-    console.log('Updating metadata:', metadata);
+  const handleDeleteCharacter = async (id: string) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      await CloudStorageService.deleteCharacter(id);
+
+      updateCurrentBook(book => ({
+        ...book,
+        characters: book.characters.filter(c => c.id !== id),
+      }));
+      if (selectedCharacter?.id === id) {
+        setSelectedCharacter(null);
+      }
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to delete character:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleAddChapter = async (chapter: Chapter) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      const payload: Omit<Chapter, 'id'> = {
+        title: chapter.title,
+        content: chapter.content,
+        order: chapter.order,
+        synopsis: chapter.synopsis,
+        notes: chapter.notes,
+        wordCount: chapter.wordCount,
+        plotPoints: chapter.plotPoints,
+        createdAt: chapter.createdAt,
+        updatedAt: chapter.updatedAt,
+      };
+
+      const created = await CloudStorageService.createChapter(currentBook.id, payload);
+
+      updateCurrentBook(book => ({
+        ...book,
+        chapters: [...book.chapters, created],
+      }));
+      setSelectedChapter(created);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to add chapter:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleUpdateChapter = async (chapter: Chapter) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      const updated = await CloudStorageService.updateChapter(chapter.id, chapter);
+
+      updateCurrentBook(book => ({
+        ...book,
+        chapters: book.chapters.map(c =>
+          c.id === updated.id ? updated : c
+        ),
+      }));
+      setSelectedChapter(updated);
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to update chapter:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleDeleteChapter = async (id: string) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      await CloudStorageService.deleteChapter(id);
+
+      updateCurrentBook(book => ({
+        ...book,
+        chapters: book.chapters
+          .filter(c => c.id !== id)
+          .map((c, index) => ({ ...c, order: index })),
+      }));
+      if (selectedChapter?.id === id) {
+        setSelectedChapter(null);
+      }
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to delete chapter:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleUpdateMetadata = async (metadata: BookMetadata) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
     updateCurrentBook(book => ({
       ...book,
       metadata,
     }));
+
+    try {
+      await CloudStorageService.updateProject(currentBook.id, {
+        metadata,
+        settings: currentBook.settings,
+      });
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to update metadata:', error);
+      setSaveStatus('error');
+    }
   };
 
-  const handleSaveSettings = (aiConfig: AIConfig) => {
+  const handleSaveSettings = async (aiConfig: AIConfig) => {
     setAppData(prev => ({
       ...prev,
       aiConfig,
     }));
+
     if (aiConfig.apiKey) {
       initializeAI(aiConfig.apiKey);
+    }
+
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      await CloudStorageService.updateProject(currentBook.id, {
+        metadata: currentBook.metadata,
+        settings: {
+          ...(currentBook.settings || {}),
+          aiProvider: aiConfig.provider === 'none' ? undefined : aiConfig.provider,
+          aiModel: aiConfig.model,
+        },
+      });
+
+      updateCurrentBook(book => ({
+        ...book,
+        settings: {
+          ...(book.settings || {}),
+          aiProvider: aiConfig.provider === 'none' ? undefined : aiConfig.provider,
+          aiModel: aiConfig.model,
+        },
+      }));
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      setSaveStatus('error');
     }
   };
 
@@ -332,6 +459,15 @@ function App() {
 
   const renderContent = () => {
     if (!currentBook) {
+      if (isLoadingBooks) {
+        return (
+          <div className="no-project">
+            <h2>Loading your projects...</h2>
+            <p>Please wait while we fetch your workspace.</p>
+          </div>
+        );
+      }
+
       return (
         <div className="no-project">
           <h2>No Project Selected</h2>
@@ -434,7 +570,7 @@ function App() {
         <ProjectSwitcher
           books={appData.books}
           currentBook={currentBook}
-          onSelectBook={(id) => setAppData(prev => ({ ...prev, currentBookId: id }))}
+          onSelectBook={handleSelectBook}
           onCreateBook={createNewBook}
           onOpenSettings={() => setShowSettings(true)}
           onOpenExport={() => setShowExport(true)}
