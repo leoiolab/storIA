@@ -44,8 +44,8 @@ function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     <div className="auth-screen">
       <div className="auth-container">
         <div className="auth-header">
-          <h1>✍️ Authorio</h1>
-          <p>AI-Powered Book Authoring</p>
+          <h1>✨ StorIA</h1>
+          <p>AI-Powered Story Creation</p>
         </div>
 
         <div className="auth-tabs">
