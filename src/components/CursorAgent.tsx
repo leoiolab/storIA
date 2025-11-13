@@ -20,6 +20,35 @@ export interface AgentMessage {
   }>;
 }
 
+const buildContextSummary = (book: Book, currentChapter?: Chapter | null, currentCharacter?: Character | null) => {
+  let summary = `Book: "${book.metadata.title}" by ${book.metadata.author}`;
+
+  if (book.metadata.synopsis) {
+    summary += `\nSynopsis: ${book.metadata.synopsis}`;
+  }
+
+  if (currentChapter) {
+    summary += `\n\nCurrent Chapter: "${currentChapter.title}"`;
+    if (currentChapter.synopsis) {
+      summary += `\nChapter Synopsis: ${currentChapter.synopsis}`;
+    }
+  }
+
+  if (currentCharacter) {
+    summary += `\n\nCurrent Character: ${currentCharacter.name} (${currentCharacter.type})`;
+    if (currentCharacter.quickDescription) {
+      summary += `\nDescription: ${currentCharacter.quickDescription}`;
+    }
+  }
+
+  const mainCharacters = book.characters.filter(c => c.type === 'main').map(c => c.name);
+  if (mainCharacters.length > 0) {
+    summary += `\n\nMain Characters: ${mainCharacters.join(', ')}`;
+  }
+
+  return summary;
+};
+
 interface CursorAgentProps {
   book: Book;
   currentChapter?: Chapter | null;
@@ -71,38 +100,10 @@ function CursorAgent({
     }
   }, [input]);
 
-  const contextSummary = useMemo(() => {
-    const lines: string[] = [];
-    lines.push(`Book: "${book.metadata.title}" by ${book.metadata.author}`);
-
-    if (book.metadata.synopsis) {
-      lines.push(`Synopsis: ${book.metadata.synopsis}`);
-    }
-
-    if (currentChapter) {
-      lines.push(`\nCurrent Chapter: "${currentChapter.title}"`);
-      if (currentChapter.synopsis) {
-        lines.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
-      }
-    }
-
-    if (currentCharacter) {
-      lines.push(`\nCurrent Character: ${currentCharacter.name} (${currentCharacter.type})`);
-      if (currentCharacter.quickDescription) {
-        lines.push(`Description: ${currentCharacter.quickDescription}`);
-      }
-    }
-
-    if (book.characters.length > 0) {
-      const mainCharacters = book.characters
-        .filter(c => c.type === 'main')
-        .map(c => c.name)
-        .join(', ');
-      lines.push(`\nMain Characters: ${mainCharacters}`);
-    }
-
-    return lines.join('\n');
-  }, [book, currentChapter, currentCharacter]);
+  const contextSummary = useMemo(
+    () => buildContextSummary(book, currentChapter, currentCharacter),
+    [book, currentChapter, currentCharacter]
+  );
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -119,16 +120,16 @@ function CursorAgent({
       return;
     }
 
-    const trimmedInput = input.trim();
-    const timestamp = Date.now();
+    const trimmedInputValue = input.trim();
+    const messageTimestamp = Date.now();
 
     setMessages(prev => [
       ...prev,
       {
-        id: timestamp.toString(),
+        id: messageTimestamp.toString(),
         role: 'user',
-        content: trimmedInput,
-        timestamp,
+        content: trimmedInputValue,
+        timestamp: messageTimestamp,
         context: currentChapter
           ? { type: 'chapter', name: currentChapter.title }
           : currentCharacter
@@ -141,7 +142,7 @@ function CursorAgent({
 
     try {
       // Build context for AI
-      const userPrompt = trimmedInput;
+      const userPrompt = trimmedInputValue;
       
       // Detect what the user wants
       const wantsCharacter = /create|generate|make.*character|new character/i.test(userPrompt);
