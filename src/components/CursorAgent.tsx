@@ -119,22 +119,29 @@ function CursorAgent({
       return;
     }
 
-    const userMessage: AgentMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: Date.now(),
-      context: currentChapter ? { type: 'chapter', name: currentChapter.title } :
-               currentCharacter ? { type: 'character', name: currentCharacter.name } : undefined
-    };
+    const trimmedInput = input.trim();
+    const timestamp = Date.now();
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [
+      ...prev,
+      {
+        id: timestamp.toString(),
+        role: 'user',
+        content: trimmedInput,
+        timestamp,
+        context: currentChapter
+          ? { type: 'chapter', name: currentChapter.title }
+          : currentCharacter
+            ? { type: 'character', name: currentCharacter.name }
+            : undefined
+      }
+    ]);
     setInput('');
     setIsLoading(true);
 
     try {
       // Build context for AI
-      const userPrompt = input.trim();
+      const userPrompt = trimmedInput;
       
       // Detect what the user wants
       const wantsCharacter = /create|generate|make.*character|new character/i.test(userPrompt);
