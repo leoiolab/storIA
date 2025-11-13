@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen } from 'lucide-react';
 import { Book, Character, Chapter } from '../types';
 import { chatWithAI, isAIConfigured } from '../services/ai';
@@ -71,34 +71,38 @@ function CursorAgent({
     }
   }, [input]);
 
-  const getContext = () => {
-    const context = [];
-    context.push(`Book: "${book.metadata.title}" by ${book.metadata.author}`);
-    
+  const contextSummary = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(`Book: "${book.metadata.title}" by ${book.metadata.author}`);
+
     if (book.metadata.synopsis) {
-      context.push(`Synopsis: ${book.metadata.synopsis}`);
+      lines.push(`Synopsis: ${book.metadata.synopsis}`);
     }
 
     if (currentChapter) {
-      context.push(`\nCurrent Chapter: "${currentChapter.title}"`);
+      lines.push(`\nCurrent Chapter: "${currentChapter.title}"`);
       if (currentChapter.synopsis) {
-        context.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
+        lines.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
       }
     }
 
     if (currentCharacter) {
-      context.push(`\nCurrent Character: ${currentCharacter.name} (${currentCharacter.type})`);
+      lines.push(`\nCurrent Character: ${currentCharacter.name} (${currentCharacter.type})`);
       if (currentCharacter.quickDescription) {
-        context.push(`Description: ${currentCharacter.quickDescription}`);
+        lines.push(`Description: ${currentCharacter.quickDescription}`);
       }
     }
 
     if (book.characters.length > 0) {
-      context.push(`\nMain Characters: ${book.characters.filter(c => c.type === 'main').map(c => c.name).join(', ')}`);
+      const mainCharacters = book.characters
+        .filter(c => c.type === 'main')
+        .map(c => c.name)
+        .join(', ');
+      lines.push(`\nMain Characters: ${mainCharacters}`);
     }
 
-    return context.join('\n');
-  };
+    return lines.join('\n');
+  }, [book, currentChapter, currentCharacter]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -130,7 +134,6 @@ function CursorAgent({
 
     try {
       // Build context for AI
-      const contextInfo = getContext();
       const userPrompt = input.trim();
       
       // Detect what the user wants
@@ -144,7 +147,7 @@ function CursorAgent({
       let enhancedPrompt = userPrompt;
       let systemPrompt = `You are an intelligent AI writing assistant with full context of the user's book.
 
-${contextInfo}
+${contextSummary}
 
 Help the user with character development, plot ideas, writing suggestions, dialogue, and any creative writing needs. Be specific and helpful, considering the context of their story.`;
 
