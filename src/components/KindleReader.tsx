@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Book, Chapter } from '../types';
 import { ChevronLeft, ChevronRight, Settings, BookOpen, X, Menu } from 'lucide-react';
 import './KindleReader.css';
@@ -24,10 +24,7 @@ export function KindleReader({ book }: KindleReaderProps) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
 
-  const chapters = book.chapters.sort((a, b) => a.order - b.order);
-  const currentChapter = chapters[currentChapterIndex];
-
-  const getWordsPerPage = useCallback(() => {
+  const wordsPerPage = useMemo(() => {
     switch (fontSize) {
       case 'xs': return 400;
       case 'sm': return 350;
@@ -38,6 +35,9 @@ export function KindleReader({ book }: KindleReaderProps) {
       default: return 300;
     }
   }, [fontSize]);
+
+  const chapters = book.chapters.sort((a, b) => a.order - b.order);
+  const currentChapter = chapters[currentChapterIndex];
 
   // Paginate content
   useEffect(() => {
@@ -51,7 +51,6 @@ export function KindleReader({ book }: KindleReaderProps) {
       const paragraphs = content.split('\n\n').filter(p => p.trim());
       
       // Simple pagination - split into chunks
-      const wordsPerPage = getWordsPerPage();
       const allWords = content.split(/\s+/);
       const pageCount = Math.ceil(allWords.length / wordsPerPage);
       
@@ -67,7 +66,7 @@ export function KindleReader({ book }: KindleReaderProps) {
     };
 
     paginateContent();
-  }, [currentChapter, fontSize, lineSpacing, margins, getWordsPerPage]);
+  }, [currentChapter, fontSize, lineSpacing, margins, wordsPerPage]);
 
   const goToNextPage = () => {
     if (currentPage < pages.length - 1) {
@@ -124,18 +123,23 @@ export function KindleReader({ book }: KindleReaderProps) {
   };
 
   // Calculate progress
-  const totalPages = chapters.reduce((sum, ch, idx) => {
-    if (idx < currentChapterIndex) {
-      const words = ch.content.split(/\s+/).length;
-      return sum + Math.ceil(words / getWordsPerPage());
-    }
-    return sum;
-  }, 0) + currentPage + 1;
+  const totalPages = useMemo(() => {
+    const previousChapterPages = chapters.reduce((sum, ch, idx) => {
+      if (idx < currentChapterIndex) {
+        const words = ch.content.split(/\s+/).length;
+        return sum + Math.ceil(words / wordsPerPage);
+      }
+      return sum;
+    }, 0);
+    return previousChapterPages + currentPage + 1;
+  }, [chapters, currentChapterIndex, currentPage, wordsPerPage]);
 
-  const totalBookPages = chapters.reduce((sum, ch) => {
-    const words = ch.content.split(/\s+/).length;
-    return sum + Math.ceil(words / getWordsPerPage());
-  }, 0);
+  const totalBookPages = useMemo(() => {
+    return chapters.reduce((sum, ch) => {
+      const words = ch.content.split(/\s+/).length;
+      return sum + Math.ceil(words / wordsPerPage);
+    }, 0);
+  }, [chapters, wordsPerPage]);
 
   const progressPercent = Math.round((totalPages / totalBookPages) * 100);
 
