@@ -83,7 +83,9 @@ function CursorAgent({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -120,29 +122,26 @@ function CursorAgent({
       return;
     }
 
-    const trimmedInputValue = input.trim();
     const messageTimestamp = Date.now();
+    const outgoingMessage: AgentMessage = {
+      id: messageTimestamp.toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: messageTimestamp,
+      context: currentChapter
+        ? { type: 'chapter', name: currentChapter.title }
+        : currentCharacter
+          ? { type: 'character', name: currentCharacter.name }
+          : undefined
+    };
 
-    setMessages(prev => [
-      ...prev,
-      {
-        id: messageTimestamp.toString(),
-        role: 'user',
-        content: trimmedInputValue,
-        timestamp: messageTimestamp,
-        context: currentChapter
-          ? { type: 'chapter', name: currentChapter.title }
-          : currentCharacter
-            ? { type: 'character', name: currentCharacter.name }
-            : undefined
-      }
-    ]);
+    setMessages(prev => [...prev, outgoingMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
       // Build context for AI
-      const userPrompt = trimmedInputValue;
+      const userPrompt = outgoingMessage.content;
       
       // Detect what the user wants
       const wantsCharacter = /create|generate|make.*character|new character/i.test(userPrompt);
