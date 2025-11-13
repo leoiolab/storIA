@@ -58,13 +58,25 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update project
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const updateData: Record<string, any> = {};
+
+    if (typeof req.body.name === 'string' && req.body.name.trim().length > 0) {
+      updateData.name = req.body.name.trim();
+    } else if (req.body.metadata?.title) {
+      updateData.name = req.body.metadata.title;
+    }
+
+    if (req.body.metadata) {
+      updateData.metadata = req.body.metadata;
+    }
+
+    if (req.body.settings) {
+      updateData.settings = req.body.settings;
+    }
+
     const project = await Project.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
-      { 
-        name: req.body.name,
-        metadata: req.body.metadata,
-        settings: req.body.settings
-      },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
     
@@ -73,9 +85,9 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
     
     res.json(project);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update project error:', error);
-    res.status(500).json({ error: 'Failed to update project' });
+    res.status(500).json({ error: error.message ?? 'Failed to update project' });
   }
 });
 
