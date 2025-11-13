@@ -6,10 +6,10 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index-web.html"
     }
   ],
   "env": {
-    "VITE_API_URL": "https://placeholder.railway.app"
+    "VITE_API_URL": "https://storia-production.up.railway.app"
   }
 }
