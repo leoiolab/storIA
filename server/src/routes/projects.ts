@@ -67,7 +67,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     if (req.body.metadata) {
-      updateData.metadata = req.body.metadata;
+      const metadataUpdate = { ...req.body.metadata };
+
+      if (Array.isArray(metadataUpdate.themes)) {
+        metadataUpdate.themes = metadataUpdate.themes.join(', ');
+      }
+
+      updateData.metadata = metadataUpdate;
     }
 
     if (req.body.settings) {
