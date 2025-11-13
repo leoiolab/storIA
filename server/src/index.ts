@@ -12,21 +12,41 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:3000')
+const rawOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:3000')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
 
+const allowedOrigins = new Set(rawOrigins);
+const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS !== 'false';
+
+const isAllowedOrigin = (origin?: string | null) => {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  if (allowVercelPreviews && /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) {
+    return true;
+  }
+
+  return false;
+};
+
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -79,7 +99,10 @@ mongoose.connect(MONGODB_URI)
     app.listen(PORT, () => {
       console.log(`🚀 StorIA Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 CORS enabled for: ${allowedOrigins.join(', ')}`);
+      console.log(`🌐 CORS enabled for: ${Array.from(allowedOrigins).join(', ') || 'none (public)'}`);
+      if (allowVercelPreviews) {
+        console.log('🌐 Vercel preview domains (*.vercel.app) are allowed');
+      }
     });
   })
   .catch((error) => {
