@@ -117,7 +117,7 @@ export class CloudStorageService {
   // Projects API
   static async getProjects(): Promise<Book[]> {
     const projects = await CloudStorageService.request('/projects');
-    return projects.map((project: any) => CloudStorageService.mapProjectToBook(project));
+    return projects.map(CloudStorageService.mapProjectToBook.bind(CloudStorageService));
   }
 
   static async getProject(id: string): Promise<Book> {
@@ -303,7 +303,7 @@ export class CloudStorageService {
       characters: [],
       chapters: [],
       plotPoints: [],
-      timeline: this.mapTimelineFromAPI(project.timeline, project._id),
+      timeline: CloudStorageService.mapTimelineFromAPI(project.timeline, project._id),
       settings: project.settings || {},
       createdAt,
       updatedAt,
