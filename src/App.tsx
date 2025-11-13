@@ -93,20 +93,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadProjects();
-    } else {
-      setAppData(prev => ({
-        ...prev,
-        books: [],
-        currentBookId: null,
-      }));
-      setSelectedCharacter(null);
-      setSelectedChapter(null);
-    }
-  }, [user, loadProjects]);
-
   const loadProjects = useCallback(async () => {
     if (!user) return;
 
@@ -152,6 +138,20 @@ function App() {
       setIsLoadingBooks(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    } else {
+      setAppData(prev => ({
+        ...prev,
+        books: [],
+        currentBookId: null,
+      }));
+      setSelectedCharacter(null);
+      setSelectedChapter(null);
+    }
+  }, [user, loadProjects]);
 
   const handleSelectBook = async (bookId: string) => {
     if (!user || bookId === appData.currentBookId) return;
