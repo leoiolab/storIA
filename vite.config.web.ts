@@ -13,6 +13,9 @@ export default defineConfig({
       }
     }
   },
+  esbuild: {
+    minifyIdentifiers: false
+  },
   server: {
     port: 3998,
   },
