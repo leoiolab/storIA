@@ -116,8 +116,8 @@ export class CloudStorageService {
 
   // Projects API
   static async getProjects(): Promise<Book[]> {
-    const projects = await this.request('/projects');
-    return projects.map((project: any) => this.mapProjectToBook(project));
+    const projects = await CloudStorageService.request('/projects');
+    return projects.map((project: any) => CloudStorageService.mapProjectToBook(project));
   }
 
   static async getProject(id: string): Promise<Book> {
