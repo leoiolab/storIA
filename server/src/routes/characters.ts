@@ -196,23 +196,27 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           } catch (parseError) {
             // If direct parse fails, it might be malformed JSON (e.g., single quotes instead of double)
             console.log('Direct JSON parse failed, trying to clean string:', parseError);
+            console.log('String to parse:', cleaned.substring(0, 200));
             
             // Check if it has single quotes (invalid JSON but valid JavaScript)
-            if (cleaned.includes("'") && !cleaned.includes('"')) {
+            // Even if it has double quotes (outer quotes), inner single quotes need to be converted
+            if (cleaned.includes("'")) {
               console.log('Detected single quotes, converting to double quotes for JSON...');
               // Replace single quotes with double quotes
-              cleaned = cleaned.replace(/'/g, '"');
+              // But be careful - we need to handle the outer quotes too
+              let quoteFixed = cleaned.replace(/'/g, '"');
               try {
-                const parsed = JSON.parse(cleaned);
+                const parsed = JSON.parse(quoteFixed);
                 if (Array.isArray(parsed)) {
                   relationships = parsed;
                   console.log('Successfully parsed after converting single to double quotes');
-                  // Skip the rest of the error handling
+                  // Skip the rest of the error handling by setting a flag
                 } else {
                   throw new Error('Parsed result is not an array');
                 }
               } catch (e) {
-                console.log('Failed to parse after quote conversion, trying other methods...');
+                console.log('Failed to parse after quote conversion:', e.message);
+                // Continue to other cleaning methods
               }
             }
             
