@@ -221,7 +221,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
               // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
               // This happens when an array is converted to string using toString() or similar
               if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'") || cleaned.includes("\\n")) {
-              console.log('Detected JavaScript code-like format, attempting to reconstruct...');
+                console.log('Detected JavaScript code-like format, attempting to reconstruct...');
               
               // Step 1: Remove all string concatenation operators
               cleaned = cleaned
@@ -326,13 +326,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     });
 
     const updateData: Record<string, any> = {
-      name: req.body.name,
-      type: req.body.type,
+        name: req.body.name,
+        type: req.body.type,
       quickDescription: req.body.quickDescription || '',
       fullBio: req.body.fullBio || '',
       characterArc: req.body.characterArc || '',
-      age: req.body.age,
-      role: req.body.role,
+        age: req.body.age,
+        role: req.body.role,
       relationships: relationships, // This MUST be an array, not a string
       userId: userObjectId // Ensure userId is set
     };
