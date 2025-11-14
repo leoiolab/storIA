@@ -60,11 +60,14 @@ const characterSchema = new Schema<ICharacter>({
   role: {
     type: String
   },
-  relationships: [{
-    characterId: String,
-    type: String,
-    description: String
-  }]
+  relationships: {
+    type: [{
+      characterId: { type: String, default: '' },
+      type: { type: String, default: '' },
+      description: { type: String, default: '' }
+    }],
+    default: []
+  }
 }, {
   timestamps: true
 });
