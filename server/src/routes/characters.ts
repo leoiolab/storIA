@@ -156,30 +156,51 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     };
 
     // Parse relationships if it's a string (legacy data or serialization issue)
-    let relationships = req.body.relationships || [];
+    let relationships = req.body.relationships;
     
     // Debug logging
     console.log('Update character - relationships type:', typeof relationships);
     console.log('Update character - relationships value:', relationships);
+    console.log('Update character - relationships constructor:', relationships?.constructor?.name);
     
-    if (typeof relationships === 'string') {
+    // Handle different input types
+    if (relationships === undefined || relationships === null) {
+      relationships = [];
+    } else if (typeof relationships === 'string') {
       try {
-        // Try to parse as JSON first
-        relationships = JSON.parse(relationships);
-      } catch (e) {
-        console.error('Failed to parse relationships as JSON:', e);
-        // If JSON parse fails, try to clean and parse again
-        try {
-          const cleaned = relationships.trim();
-          if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
-            relationships = JSON.parse(cleaned);
-          } else {
-            relationships = [];
+        let cleaned = relationships.trim();
+        
+        // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
+        // Extract the actual array content by removing string concatenation syntax
+        if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'")) {
+          // Remove string concatenation operators and quotes
+          cleaned = cleaned
+            .replace(/' \+/g, '')
+            .replace(/" \+/g, '')
+            .replace(/'/g, '"') // Replace single quotes with double quotes
+            .replace(/\n/g, '') // Remove newlines
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+          
+          // Try to find the array structure
+          const arrayStart = cleaned.indexOf('[');
+          const arrayEnd = cleaned.lastIndexOf(']');
+          if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+            cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
           }
-        } catch (e2) {
-          console.error('Failed to parse relationships string completely:', e2);
+        }
+        
+        // Try to parse as JSON
+        if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+          relationships = JSON.parse(cleaned);
+        } else {
+          console.error('Cleaned string does not look like JSON array:', cleaned);
           relationships = [];
         }
+      } catch (e) {
+        console.error('Failed to parse relationships string:', e);
+        console.error('Original string value was:', relationships);
+        relationships = [];
       }
     }
     

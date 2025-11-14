@@ -5,6 +5,7 @@
   overflow: hidden;
   background: var(--color-surface);
   min-height: 0; /* Allow flex child to shrink below content size */
+  height: 100%; /* Ensure it takes full height of parent */
 }
 
 .editor-empty {
@@ -115,6 +116,7 @@
   background: var(--color-surface);
   min-height: 0; /* Allow flex child to shrink below content size */
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  max-height: 100%; /* Constrain to parent height */
 }
 
 .form-group {
@@ -197,6 +199,7 @@
   margin-top: 32px;
   padding-top: 32px;
   border-top: 2px solid rgba(243, 214, 195, 0.6);
+  scroll-margin-top: 20px; /* Add space when scrolling to this section */
 }
 
 .section-header {

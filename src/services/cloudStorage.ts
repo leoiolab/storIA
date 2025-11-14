@@ -216,24 +216,38 @@ export class CloudStorageService {
     // Ensure relationships is properly formatted as an array
     const relationships = character.relationships 
       ? character.relationships.map(rel => ({
-          characterId: rel.targetCharacterId,
-          type: rel.relationshipType,
+          characterId: rel.targetCharacterId || '',
+          type: rel.relationshipType || '',
           description: rel.description || '',
         }))
       : [];
 
+    // Ensure relationships is actually an array (not stringified)
+    if (!Array.isArray(relationships)) {
+      console.error('Relationships is not an array before sending:', typeof relationships, relationships);
+    }
+
+    const requestBody = {
+      name: character.name,
+      type: character.type,
+      quickDescription: character.description,
+      fullBio: character.biography,
+      characterArc: character.characterArc,
+      age: character.age,
+      role: character.role,
+      relationships: relationships // This should be an array, not a string
+    };
+
+    // Debug: Log what we're sending
+    console.log('Sending relationships:', {
+      type: typeof requestBody.relationships,
+      isArray: Array.isArray(requestBody.relationships),
+      value: requestBody.relationships
+    });
+
     const updated = await this.request(`/characters/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        name: character.name,
-        type: character.type,
-        quickDescription: character.description,
-        fullBio: character.biography,
-        characterArc: character.characterArc,
-        age: character.age,
-        role: character.role,
-        relationships: relationships
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     return CloudStorageService.mapCharacterFromAPI(updated);
