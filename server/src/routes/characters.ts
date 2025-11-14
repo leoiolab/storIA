@@ -218,10 +218,9 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
             
             // If we still don't have an array, continue with other cleaning methods
             if (typeof relationships === 'string') {
-            
-            // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
-            // This happens when an array is converted to string using toString() or similar
-            if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'") || cleaned.includes("\\n")) {
+              // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
+              // This happens when an array is converted to string using toString() or similar
+              if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'") || cleaned.includes("\\n")) {
               console.log('Detected JavaScript code-like format, attempting to reconstruct...');
               
               // Step 1: Remove all string concatenation operators
