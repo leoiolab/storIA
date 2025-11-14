@@ -55,7 +55,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // This MUST run after express.json() but before routes
 app.use((req: Request, res: Response, next: NextFunction) => {
   // Only process PUT/POST requests with body
-  if (req.method === 'PUT' || req.method === 'POST') {
+  if ((req.method === 'PUT' || req.method === 'POST') && req.path.includes('/characters')) {
+    // Log that middleware is running
+    if (req.body && req.body.relationships) {
+      console.log('🔍 MIDDLEWARE: Checking relationships for', req.method, req.path);
+      console.log('🔍 MIDDLEWARE: relationships type:', typeof req.body.relationships, 'isArray:', Array.isArray(req.body.relationships));
+    }
+    
     if (req.body && req.body.relationships && typeof req.body.relationships === 'string') {
       try {
         let toParse = req.body.relationships.trim();
