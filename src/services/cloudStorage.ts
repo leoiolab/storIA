@@ -378,6 +378,7 @@ export class CloudStorageService {
       createdAt: chapter.createdAt ? new Date(chapter.createdAt).getTime() : Date.now(),
       updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : Date.now(),
     };
+  }
 
   private static mapPlotPointsFromAPI(points: any[] = [], parentId: string): PlotPoint[] {
     return points.map((point, index) => ({
