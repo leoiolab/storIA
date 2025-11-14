@@ -56,30 +56,45 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.body && req.body.relationships && typeof req.body.relationships === 'string') {
     try {
       let toParse = req.body.relationships.trim();
-      // Handle single quotes
-      if (toParse.includes("'") && !toParse.match(/^\[.*\]$/)) {
-        toParse = toParse.replace(/'/g, '"');
-      }
-      // Handle JavaScript code format
-      if (toParse.includes("' +") || toParse.includes("\\n")) {
+      console.log('Middleware: Detected relationships as string, attempting to parse...');
+      console.log('Middleware: String value (first 200 chars):', toParse.substring(0, 200));
+      
+      // Handle JavaScript code format first (has string concatenation)
+      if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n")) {
+        console.log('Middleware: Detected JavaScript code format');
         toParse = toParse
           .replace(/' \+/g, '')
           .replace(/" \+/g, '')
           .replace(/\\n/g, '')
           .replace(/\n/g, '')
+          .replace(/\r/g, '')
           .replace(/'/g, '"');
         const arrayStart = toParse.indexOf('[');
         const arrayEnd = toParse.lastIndexOf(']');
-        if (arrayStart !== -1 && arrayEnd !== -1) {
+        if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
           toParse = toParse.substring(arrayStart, arrayEnd + 1);
         }
+      } else if (toParse.includes("'")) {
+        // Handle single quotes (convert to double quotes)
+        console.log('Middleware: Detected single quotes, converting to double quotes');
+        toParse = toParse.replace(/'/g, '"');
       }
+      
+      // Try to parse
       if (toParse.startsWith('[') && toParse.endsWith(']')) {
-        req.body.relationships = JSON.parse(toParse);
-        console.log('Middleware: Fixed relationships from string to array');
+        const parsed = JSON.parse(toParse);
+        if (Array.isArray(parsed)) {
+          req.body.relationships = parsed;
+          console.log('Middleware: Successfully fixed relationships from string to array, got', parsed.length, 'items');
+        } else {
+          console.error('Middleware: Parsed result is not an array:', typeof parsed);
+        }
+      } else {
+        console.error('Middleware: String does not look like an array:', toParse.substring(0, 100));
       }
     } catch (e: any) {
       console.error('Middleware: Failed to parse relationships:', e?.message);
+      console.error('Middleware: Error details:', e);
     }
   }
   next();
