@@ -31,12 +31,15 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
     if (!character) return;
     
     // Don't update if values haven't actually changed
+    const currentRelationships = character.relationships || [];
+    const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(currentRelationships);
+    
     if (
       name === character.name &&
       description === character.description &&
       biography === character.biography &&
       characterArc === (character.characterArc || '') &&
-      JSON.stringify(relationships) === JSON.stringify(character.relationships || [])
+      relationshipsEqual
     ) {
       return;
     }
@@ -55,6 +58,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
     }, 500);
 
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, description, biography, characterArc, relationships]);
 
   const handleAddRelationship = () => {

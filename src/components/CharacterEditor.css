@@ -4,6 +4,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--color-surface);
+  min-height: 0; /* Allow flex child to shrink below content size */
 }
 
 .editor-empty {
@@ -109,8 +110,11 @@
 .editor-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px;
   background: var(--color-surface);
+  min-height: 0; /* Allow flex child to shrink below content size */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .form-group {
