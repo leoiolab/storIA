@@ -202,20 +202,24 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
             // Even if it has double quotes (outer quotes), inner single quotes need to be converted
             if (cleaned.includes("'")) {
               console.log('Detected single quotes, converting to double quotes for JSON...');
+              console.log('Original string:', cleaned.substring(0, 150));
               // Replace single quotes with double quotes
               // But be careful - we need to handle the outer quotes too
               let quoteFixed = cleaned.replace(/'/g, '"');
+              console.log('After quote conversion:', quoteFixed.substring(0, 150));
               try {
                 const parsed = JSON.parse(quoteFixed);
                 if (Array.isArray(parsed)) {
                   relationships = parsed;
-                  console.log('Successfully parsed after converting single to double quotes');
-                  // Skip the rest of the error handling by setting a flag
+                  console.log('Successfully parsed after converting single to double quotes, got', parsed.length, 'items');
+                  // Skip the rest of the error handling - we have a valid array
                 } else {
+                  console.error('Parsed result is not an array:', typeof parsed, parsed);
                   throw new Error('Parsed result is not an array');
                 }
               } catch (e: any) {
                 console.log('Failed to parse after quote conversion:', e?.message || e);
+                console.log('Quote-fixed string that failed:', quoteFixed.substring(0, 200));
                 // Continue to other cleaning methods
               }
             }
