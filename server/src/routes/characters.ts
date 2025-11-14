@@ -349,12 +349,25 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     // Double-check updateData.relationships is an array
     if (typeof updateData.relationships === 'string') {
       console.error('CRITICAL: updateData.relationships is a string! Attempting to parse again...');
+      console.error('String value:', updateData.relationships.substring(0, 200));
       try {
-        updateData.relationships = JSON.parse(updateData.relationships);
-      } catch (e) {
-        console.error('Failed to parse updateData.relationships:', e);
+        // Try to parse with single quote conversion
+        let toParse = updateData.relationships.trim();
+        if (toParse.includes("'")) {
+          toParse = toParse.replace(/'/g, '"');
+        }
+        updateData.relationships = JSON.parse(toParse);
+        console.log('Successfully parsed updateData.relationships after second attempt');
+      } catch (e: any) {
+        console.error('Failed to parse updateData.relationships:', e?.message || e);
         updateData.relationships = [];
       }
+    }
+    
+    // Final check before saving
+    if (!Array.isArray(updateData.relationships)) {
+      console.error('CRITICAL: updateData.relationships is STILL not an array after all attempts!', typeof updateData.relationships);
+      updateData.relationships = [];
     }
 
     const character = await Character.findOneAndUpdate(
