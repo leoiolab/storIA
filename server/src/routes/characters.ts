@@ -191,30 +191,70 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
             console.log('Direct JSON parse failed, trying to clean string:', parseError);
             
             // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
-            if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'")) {
-              // Remove string concatenation operators and quotes
+            // This happens when an array is converted to string using toString() or similar
+            if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'") || cleaned.includes("\\n")) {
+              console.log('Detected JavaScript code-like format, attempting to reconstruct...');
+              
+              // Step 1: Remove all string concatenation operators
               cleaned = cleaned
                 .replace(/' \+/g, '')
                 .replace(/" \+/g, '')
-                .replace(/'/g, '"') // Replace single quotes with double quotes
-                .replace(/\n/g, '') // Remove newlines
-                .replace(/\s+/g, ' ') // Normalize whitespace
+                .replace(/\s*\+\s*/g, '') // Remove any remaining + operators
                 .trim();
               
-              // Try to find the array structure
+              // Step 2: Replace escaped newlines and actual newlines
+              cleaned = cleaned
+                .replace(/\\n/g, '') // Remove escaped newlines
+                .replace(/\n/g, '') // Remove actual newlines
+                .replace(/\r/g, '') // Remove carriage returns
+                .trim();
+              
+              // Step 3: Replace single quotes with double quotes for JSON
+              // But be careful - we need to preserve quotes inside strings
+              // First, let's try to find the array structure
               const arrayStart = cleaned.indexOf('[');
               const arrayEnd = cleaned.lastIndexOf(']');
+              
               if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
-                cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
+                // Extract just the array part
+                let arrayPart = cleaned.substring(arrayStart, arrayEnd + 1);
+                
+                // Replace single quotes with double quotes (simple approach)
+                // This works because we know the structure: { key: 'value' }
+                arrayPart = arrayPart.replace(/'/g, '"');
+                
+                // Try to parse it
+                try {
+                  relationships = JSON.parse(arrayPart);
+                  console.log('Successfully parsed after cleaning JavaScript code format');
+                } catch (e2) {
+                  console.error('Failed to parse after cleaning:', e2);
+                  console.error('Cleaned array part:', arrayPart);
+                  relationships = [];
+                }
+              } else {
+                console.error('Could not find array boundaries in cleaned string');
+                relationships = [];
               }
-            }
-            
-            // Try to parse as JSON again after cleaning
-            if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
-              relationships = JSON.parse(cleaned);
             } else {
-              console.error('Cleaned string does not look like JSON array:', cleaned);
-              relationships = [];
+              // Doesn't look like JavaScript code, try other cleaning
+              cleaned = cleaned
+                .replace(/\n/g, '')
+                .replace(/\r/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+              
+              if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+                try {
+                  relationships = JSON.parse(cleaned);
+                } catch (e3) {
+                  console.error('Failed to parse after basic cleaning:', e3);
+                  relationships = [];
+                }
+              } else {
+                console.error('Cleaned string does not look like JSON array:', cleaned);
+                relationships = [];
+              }
             }
           }
         } else {
