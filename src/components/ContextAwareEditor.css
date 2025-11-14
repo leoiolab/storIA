@@ -5,6 +5,7 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* Allow flex child to shrink below content size */
+  height: 100%; /* Ensure it takes full height of parent */
 }
 
 .context-bar {

@@ -170,31 +170,45 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       try {
         let cleaned = relationships.trim();
         
-        // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
-        // Extract the actual array content by removing string concatenation syntax
-        if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'")) {
-          // Remove string concatenation operators and quotes
-          cleaned = cleaned
-            .replace(/' \+/g, '')
-            .replace(/" \+/g, '')
-            .replace(/'/g, '"') // Replace single quotes with double quotes
-            .replace(/\n/g, '') // Remove newlines
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .trim();
-          
-          // Try to find the array structure
-          const arrayStart = cleaned.indexOf('[');
-          const arrayEnd = cleaned.lastIndexOf(']');
-          if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
-            cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
-          }
-        }
-        
-        // Try to parse as JSON
+        // First, try direct JSON parse (most common case - valid JSON string)
         if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
-          relationships = JSON.parse(cleaned);
+          try {
+            relationships = JSON.parse(cleaned);
+            // Successfully parsed, continue
+          } catch (parseError) {
+            // If direct parse fails, it might be malformed JSON or JavaScript code
+            console.log('Direct JSON parse failed, trying to clean string:', parseError);
+            
+            // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
+            if (cleaned.includes("' +") || cleaned.includes('" +') || cleaned.includes("' +'")) {
+              // Remove string concatenation operators and quotes
+              cleaned = cleaned
+                .replace(/' \+/g, '')
+                .replace(/" \+/g, '')
+                .replace(/'/g, '"') // Replace single quotes with double quotes
+                .replace(/\n/g, '') // Remove newlines
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .trim();
+              
+              // Try to find the array structure
+              const arrayStart = cleaned.indexOf('[');
+              const arrayEnd = cleaned.lastIndexOf(']');
+              if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+                cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
+              }
+            }
+            
+            // Try to parse as JSON again after cleaning
+            if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+              relationships = JSON.parse(cleaned);
+            } else {
+              console.error('Cleaned string does not look like JSON array:', cleaned);
+              relationships = [];
+            }
+          }
         } else {
-          console.error('Cleaned string does not look like JSON array:', cleaned);
+          // Doesn't look like an array string, set to empty
+          console.error('Relationships string does not start with [ and end with ]:', cleaned);
           relationships = [];
         }
       } catch (e) {
