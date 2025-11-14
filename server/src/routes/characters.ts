@@ -419,6 +419,49 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
     
     console.log('About to save to Mongoose - relationships type:', typeof updateData.relationships, 'isArray:', Array.isArray(updateData.relationships));
+    
+    // ABSOLUTE FINAL CHECK - Parse relationships one more time right before Mongoose
+    // This is the last line of defense before the database operation
+    if (typeof updateData.relationships === 'string') {
+      console.error('🚨 FINAL CHECK: relationships is STILL a string right before Mongoose!');
+      console.error('String value:', updateData.relationships.substring(0, 300));
+      try {
+        let finalParse = updateData.relationships.trim();
+        // Handle all formats
+        if (finalParse.includes("' +") || finalParse.includes('" +') || finalParse.includes("\\n")) {
+          finalParse = finalParse
+            .replace(/' \+/g, '')
+            .replace(/" \+/g, '')
+            .replace(/\s*\+\s*/g, '')
+            .replace(/\\n/g, '')
+            .replace(/\n/g, '')
+            .replace(/\r/g, '')
+            .replace(/'/g, '"');
+          const arrayStart = finalParse.indexOf('[');
+          const arrayEnd = finalParse.lastIndexOf(']');
+          if (arrayStart !== -1 && arrayEnd !== -1) {
+            finalParse = finalParse.substring(arrayStart, arrayEnd + 1);
+          }
+        } else if (finalParse.includes("'")) {
+          finalParse = finalParse.replace(/'/g, '"');
+        }
+        if (finalParse.startsWith('[') && finalParse.endsWith(']')) {
+          updateData.relationships = JSON.parse(finalParse);
+          console.log('🚨 FINAL CHECK: Successfully parsed relationships at the absolute last moment');
+        } else {
+          updateData.relationships = [];
+        }
+      } catch (finalErr: any) {
+        console.error('🚨 FINAL CHECK: Failed to parse:', finalErr?.message);
+        updateData.relationships = [];
+      }
+    }
+    
+    // One more type check
+    if (!Array.isArray(updateData.relationships)) {
+      console.error('🚨 FINAL CHECK: relationships is not an array, forcing to empty array');
+      updateData.relationships = [];
+    }
 
     const character = await Character.findOneAndUpdate(
       legacyFilter,
