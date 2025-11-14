@@ -1,4 +1,3 @@
-import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import './SaveStatus.css';
 
 type SaveStatus = 'saving' | 'saved' | 'error' | 'idle';
@@ -11,32 +10,20 @@ interface SaveStatusProps {
 function SaveStatus({ status, lastSaved }: SaveStatusProps) {
   const resolvedStatus = status === 'idle' && lastSaved ? 'saved' as SaveStatus : status;
 
-  if (resolvedStatus === 'idle') return null;
+  // Only show saved or error states, hide when idle or saving
+  if (resolvedStatus === 'idle' || resolvedStatus === 'saving') return null;
 
   const getStatusInfo = () => {
-    const savedLabel = lastSaved
-      ? `Saved at ${lastSaved.toLocaleTimeString()}`
-      : 'Saved';
-
     switch (resolvedStatus) {
-      case 'saving':
-        return {
-          icon: <Loader2 size={16} className="spinning" />,
-          label: 'Saving…',
-          className: 'saving',
-          title: 'Saving changes…'
-        };
       case 'saved':
         return {
-          icon: <Check size={16} />,
-          label: savedLabel,
+          text: 'autosaved',
           className: 'saved',
-          title: savedLabel
+          title: lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : 'Saved'
         };
       case 'error':
         return {
-          icon: <AlertCircle size={16} />,
-          label: 'Save failed',
+          text: 'autosaved',
           className: 'error',
           title: 'Save failed. Check your connection and try again.'
         };
@@ -50,13 +37,12 @@ function SaveStatus({ status, lastSaved }: SaveStatusProps) {
 
   return (
     <div
-      className={`save-indicator ${statusInfo.className}`}
+      className={`save-status-text ${statusInfo.className}`}
       title={statusInfo.title}
       role="status"
       aria-live="polite"
     >
-      {statusInfo.icon}
-      <span className="sr-only">{statusInfo.label}</span>
+      {statusInfo.text}
     </div>
   );
 }

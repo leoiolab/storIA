@@ -657,14 +657,17 @@ function App() {
         onLogout={user ? handleLogout : undefined}
         userName={user?.name}
       >
-        <ProjectSwitcher
-          books={appData.books}
-          currentBook={currentBook}
-          onSelectBook={handleSelectBook}
-          onCreateBook={createNewBook}
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenExport={() => setShowExport(true)}
-        />
+        <div className="project-switcher-container">
+          <ProjectSwitcher
+            books={appData.books}
+            currentBook={currentBook}
+            onSelectBook={handleSelectBook}
+            onCreateBook={createNewBook}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenExport={() => setShowExport(true)}
+          />
+          <SaveStatus status={saveStatus} lastSaved={lastSaved} />
+        </div>
       </Sidebar>
 
       <div className="content">
@@ -683,8 +686,6 @@ function App() {
         book={currentBook}
         onClose={() => setShowExport(false)}
       />
-
-      <SaveStatus status={saveStatus} lastSaved={lastSaved} />
 
       {/* Cursor-Style AI Agent - Collapsible Side Panel */}
       {currentBook && (
