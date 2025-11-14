@@ -16,22 +16,48 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     }
 
     const userObjectId = new Types.ObjectId(req.userId);
-    const legacyFilter = {
-      $or: [
-        { userId: userObjectId },
-        { userId: { $exists: false } },
-        { userId: null }
-      ]
-    };
-
-    const projects = await Project.find(legacyFilter).sort({ updatedAt: -1 });
-    const legacyIds = projects.filter(project => !project.userId).map(project => project._id);
-
-    if (legacyIds.length > 0) {
-      await Project.updateMany({ _id: { $in: legacyIds } }, { $set: { userId: userObjectId } });
-
-      const refreshed = await Project.find({ userId: userObjectId }).sort({ updatedAt: -1 });
-      return res.json(refreshed);
+    
+    // First, try to find projects with matching userId
+    let projects = await Project.find({ userId: userObjectId }).sort({ updatedAt: -1 });
+    
+    // If no projects found, also check for legacy projects (without userId)
+    // This helps recover data that might have been lost
+    if (projects.length === 0) {
+      const legacyProjects = await Project.find({
+        $or: [
+          { userId: { $exists: false } },
+          { userId: null }
+        ]
+      }).sort({ updatedAt: -1 });
+      
+      // Migrate all legacy projects to current user
+      if (legacyProjects.length > 0) {
+        const legacyIds = legacyProjects.map(p => p._id);
+        await Project.updateMany(
+          { _id: { $in: legacyIds } },
+          { $set: { userId: userObjectId } }
+        );
+        // Return migrated projects
+        projects = await Project.find({ userId: userObjectId }).sort({ updatedAt: -1 });
+      }
+    } else {
+      // Migrate any legacy projects that might exist alongside user's projects
+      const legacyProjects = await Project.find({
+        $or: [
+          { userId: { $exists: false } },
+          { userId: null }
+        ]
+      }).sort({ updatedAt: -1 });
+      
+      if (legacyProjects.length > 0) {
+        const legacyIds = legacyProjects.map(p => p._id);
+        await Project.updateMany(
+          { _id: { $in: legacyIds } },
+          { $set: { userId: userObjectId } }
+        );
+        // Refresh to include migrated projects
+        projects = await Project.find({ userId: userObjectId }).sort({ updatedAt: -1 });
+      }
     }
 
     res.json(projects);

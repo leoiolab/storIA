@@ -117,7 +117,7 @@ export class CloudStorageService {
   // Projects API
   static async getProjects(): Promise<Book[]> {
     const projects = await CloudStorageService.request('/projects');
-    return projects.map(CloudStorageService.mapProjectToBook.bind(CloudStorageService));
+    return projects.map(project => CloudStorageService.mapProjectToBook(project));
   }
 
   static async getProject(id: string): Promise<Book> {
@@ -130,11 +130,11 @@ export class CloudStorageService {
     ]);
 
     return {
-      ...this.mapProjectToBook(project),
+      ...CloudStorageService.mapProjectToBook(project),
       characters,
       chapters,
-      plotPoints: project.plotPoints ? this.mapPlotPointsFromAPI(project.plotPoints, id) : [],
-      timeline: this.mapTimelineFromAPI(project.timeline, id),
+      plotPoints: project.plotPoints ? CloudStorageService.mapPlotPointsFromAPI(project.plotPoints, id) : [],
+      timeline: CloudStorageService.mapTimelineFromAPI(project.timeline, id),
     };
   }
 
@@ -145,11 +145,11 @@ export class CloudStorageService {
     });
 
     return {
-      ...this.mapProjectToBook(project),
+      ...CloudStorageService.mapProjectToBook(project),
       characters: [],
       chapters: [],
       plotPoints: [],
-      timeline: this.mapTimelineFromAPI(project.timeline, project._id),
+      timeline: CloudStorageService.mapTimelineFromAPI(project.timeline, project._id),
     };
   }
 
@@ -171,7 +171,7 @@ export class CloudStorageService {
       }),
     });
 
-    return this.mapProjectToBook(project);
+    return CloudStorageService.mapProjectToBook(project);
   }
 
   static async deleteProject(id: string): Promise<void> {
@@ -181,7 +181,7 @@ export class CloudStorageService {
   // Characters API
   static async getCharactersByProject(projectId: string): Promise<Character[]> {
     const characters = await this.request(`/characters/project/${projectId}`);
-    return characters.map(this.mapCharacterFromAPI);
+    return characters.map(char => CloudStorageService.mapCharacterFromAPI(char));
   }
 
   static async createCharacter(projectId: string, character: Omit<Character, 'id'>): Promise<Character> {
@@ -209,7 +209,7 @@ export class CloudStorageService {
       }),
     });
 
-    return this.mapCharacterFromAPI(created);
+    return CloudStorageService.mapCharacterFromAPI(created);
   }
 
   static async updateCharacter(id: string, character: Partial<Character>): Promise<Character> {
@@ -236,7 +236,7 @@ export class CloudStorageService {
       }),
     });
 
-    return this.mapCharacterFromAPI(updated);
+    return CloudStorageService.mapCharacterFromAPI(updated);
   }
 
   static async deleteCharacter(id: string): Promise<void> {
@@ -246,7 +246,7 @@ export class CloudStorageService {
   // Chapters API
   static async getChaptersByProject(projectId: string): Promise<Chapter[]> {
     const chapters = await this.request(`/chapters/project/${projectId}`);
-    return chapters.map(this.mapChapterFromAPI);
+    return chapters.map(chapter => CloudStorageService.mapChapterFromAPI(chapter));
   }
 
   static async createChapter(projectId: string, chapter: Omit<Chapter, 'id'>): Promise<Chapter> {
@@ -266,7 +266,7 @@ export class CloudStorageService {
       }),
     });
 
-    return this.mapChapterFromAPI(created);
+    return CloudStorageService.mapChapterFromAPI(created);
   }
 
   static async updateChapter(id: string, chapter: Partial<Chapter>): Promise<Chapter> {
@@ -285,7 +285,7 @@ export class CloudStorageService {
       }),
     });
 
-    return this.mapChapterFromAPI(updated);
+    return CloudStorageService.mapChapterFromAPI(updated);
   }
 
   static async deleteChapter(id: string): Promise<void> {
@@ -298,7 +298,7 @@ export class CloudStorageService {
       body: JSON.stringify({ projectId, chapterOrders }),
     });
 
-    return chapters.map(this.mapChapterFromAPI);
+    return chapters.map(chapter => CloudStorageService.mapChapterFromAPI(chapter));
   }
 
   // Mappers
@@ -373,12 +373,11 @@ export class CloudStorageService {
       synopsis: chapter.synopsis,
       notes: chapter.notes,
       order: chapter.order,
-      plotPoints: this.mapPlotPointsFromAPI(chapter.plotPoints, chapter._id),
+      plotPoints: CloudStorageService.mapPlotPointsFromAPI(chapter.plotPoints || [], chapter._id),
       wordCount: chapter.wordCount || 0,
       createdAt: chapter.createdAt ? new Date(chapter.createdAt).getTime() : Date.now(),
       updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : Date.now(),
     };
-  }
 
   private static mapPlotPointsFromAPI(points: any[] = [], parentId: string): PlotPoint[] {
     return points.map((point, index) => ({
