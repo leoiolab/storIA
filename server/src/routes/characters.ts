@@ -489,11 +489,18 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
     
     console.log('About to call Mongoose with clean update - relationships type:', typeof cleanUpdate.$set.relationships, 'isArray:', Array.isArray(cleanUpdate.$set.relationships), 'length:', cleanUpdate.$set.relationships.length);
+    console.log('Clean update relationships sample:', JSON.stringify(cleanUpdate.$set.relationships[0]));
 
+    // Try using setDefaultsOnInsert and strict: false to bypass casting issues
     const character = await Character.findOneAndUpdate(
       legacyFilter,
       cleanUpdate,
-      { new: true, runValidators: true }
+      { 
+        new: true, 
+        runValidators: true,
+        setDefaultsOnInsert: true,
+        strict: false // This might help bypass the casting issue
+      }
     );
     
     if (!character) {
