@@ -462,10 +462,37 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       console.error('🚨 FINAL CHECK: relationships is not an array, forcing to empty array');
       updateData.relationships = [];
     }
+    
+    // Create a clean update object with explicitly typed relationships
+    // This ensures Mongoose receives exactly what we want
+    const cleanUpdate: Record<string, any> = {
+      $set: {
+        name: updateData.name,
+        type: updateData.type,
+        quickDescription: updateData.quickDescription,
+        fullBio: updateData.fullBio,
+        characterArc: updateData.characterArc,
+        age: updateData.age,
+        role: updateData.role,
+        userId: updateData.userId,
+        relationships: Array.isArray(updateData.relationships) ? updateData.relationships : []
+      }
+    };
+    
+    // Validate each relationship object
+    if (Array.isArray(cleanUpdate.$set.relationships)) {
+      cleanUpdate.$set.relationships = cleanUpdate.$set.relationships.map((rel: any) => ({
+        characterId: String(rel.characterId || ''),
+        type: String(rel.type || ''),
+        description: String(rel.description || '')
+      }));
+    }
+    
+    console.log('About to call Mongoose with clean update - relationships type:', typeof cleanUpdate.$set.relationships, 'isArray:', Array.isArray(cleanUpdate.$set.relationships), 'length:', cleanUpdate.$set.relationships.length);
 
     const character = await Character.findOneAndUpdate(
       legacyFilter,
-      { $set: updateData },
+      cleanUpdate,
       { new: true, runValidators: true }
     );
     
