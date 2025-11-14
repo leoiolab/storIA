@@ -111,41 +111,78 @@ characterSchema.pre('save', function(next) {
 // Pre-update hook for findOneAndUpdate
 characterSchema.pre(['updateOne', 'findOneAndUpdate'], function(next) {
   const update = this.getUpdate() as any;
-  if (update && update.$set && update.$set.relationships && typeof update.$set.relationships === 'string') {
+  console.log('Pre-update hook: Checking update object');
+  
+  // Check both $set and direct update
+  const relationshipsPath = update?.$set?.relationships || update?.relationships;
+  
+  if (relationshipsPath && typeof relationshipsPath === 'string') {
     try {
-      let toParse = update.$set.relationships.trim();
-      console.log('Pre-update hook: Detected relationships as string');
-      if (toParse.includes("'")) {
-        toParse = toParse.replace(/'/g, '"');
-      }
-      if (toParse.includes("' +") || toParse.includes("\\n")) {
+      let toParse = relationshipsPath.trim();
+      console.log('Pre-update hook: ⚠️ Detected relationships as string');
+      console.log('Pre-update hook: String (first 300 chars):', toParse.substring(0, 300));
+      
+      // Handle JavaScript code format first
+      if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n") || (toParse.includes('\n') && toParse.includes("' +"))) {
+        console.log('Pre-update hook: Detected JavaScript code format');
         toParse = toParse
           .replace(/' \+/g, '')
           .replace(/" \+/g, '')
+          .replace(/\s*\+\s*/g, '')
           .replace(/\\n/g, '')
           .replace(/\n/g, '')
+          .replace(/\r/g, '')
           .replace(/'/g, '"');
         const arrayStart = toParse.indexOf('[');
         const arrayEnd = toParse.lastIndexOf(']');
-        if (arrayStart !== -1 && arrayEnd !== -1) {
+        if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
           toParse = toParse.substring(arrayStart, arrayEnd + 1);
         }
+      } else if (toParse.includes("'")) {
+        // Handle single quotes
+        console.log('Pre-update hook: Detected single quotes');
+        toParse = toParse.replace(/'/g, '"');
       }
+      
       if (toParse.startsWith('[') && toParse.endsWith(']')) {
         const parsed = JSON.parse(toParse);
         if (Array.isArray(parsed)) {
-          update.$set.relationships = parsed;
-          console.log('Pre-update hook: ✅ Fixed relationships from string to array');
+          // Modify the update object
+          if (update.$set) {
+            update.$set.relationships = parsed;
+          } else {
+            update.relationships = parsed;
+          }
+          // Also use set() to ensure it's applied
+          this.set({ relationships: parsed });
+          console.log('Pre-update hook: ✅ Fixed relationships from string to array, got', parsed.length, 'items');
         } else {
-          update.$set.relationships = [];
+          console.error('Pre-update hook: Parsed result is not an array');
+          if (update.$set) {
+            update.$set.relationships = [];
+          } else {
+            update.relationships = [];
+          }
         }
       } else {
-        update.$set.relationships = [];
+        console.error('Pre-update hook: String does not look like an array after cleaning');
+        if (update.$set) {
+          update.$set.relationships = [];
+        } else {
+          update.relationships = [];
+        }
       }
     } catch (e: any) {
-      console.error('Pre-update hook: Failed to parse relationships:', e?.message);
-      update.$set.relationships = [];
+      console.error('Pre-update hook: ❌ Failed to parse relationships:', e?.message);
+      console.error('Pre-update hook: Error stack:', e?.stack);
+      if (update.$set) {
+        update.$set.relationships = [];
+      } else {
+        update.relationships = [];
+      }
     }
+  } else if (relationshipsPath) {
+    console.log('Pre-update hook: relationships is not a string, type:', typeof relationshipsPath, 'isArray:', Array.isArray(relationshipsPath));
   }
   next();
 });
