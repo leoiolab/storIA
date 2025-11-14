@@ -51,6 +51,40 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Middleware to fix relationships field if it's a string
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.body && req.body.relationships && typeof req.body.relationships === 'string') {
+    try {
+      let toParse = req.body.relationships.trim();
+      // Handle single quotes
+      if (toParse.includes("'") && !toParse.match(/^\[.*\]$/)) {
+        toParse = toParse.replace(/'/g, '"');
+      }
+      // Handle JavaScript code format
+      if (toParse.includes("' +") || toParse.includes("\\n")) {
+        toParse = toParse
+          .replace(/' \+/g, '')
+          .replace(/" \+/g, '')
+          .replace(/\\n/g, '')
+          .replace(/\n/g, '')
+          .replace(/'/g, '"');
+        const arrayStart = toParse.indexOf('[');
+        const arrayEnd = toParse.lastIndexOf(']');
+        if (arrayStart !== -1 && arrayEnd !== -1) {
+          toParse = toParse.substring(arrayStart, arrayEnd + 1);
+        }
+      }
+      if (toParse.startsWith('[') && toParse.endsWith(']')) {
+        req.body.relationships = JSON.parse(toParse);
+        console.log('Middleware: Fixed relationships from string to array');
+      }
+    } catch (e: any) {
+      console.error('Middleware: Failed to parse relationships:', e?.message);
+    }
+  }
+  next();
+});
+
 // Request logging in development
 if (process.env.NODE_ENV === 'development') {
   app.use((req: Request, res: Response, next: NextFunction) => {
