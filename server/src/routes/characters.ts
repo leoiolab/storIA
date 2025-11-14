@@ -370,6 +370,48 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       updateData.relationships = [];
     }
 
+    // CRITICAL: One final check - ensure relationships is definitely an array
+    // This is the last chance before Mongoose tries to save it
+    if (typeof updateData.relationships === 'string') {
+      console.error('FATAL: relationships is STILL a string right before Mongoose save!');
+      console.error('String value:', updateData.relationships);
+      // Force parse it one more time
+      try {
+        let toParse = updateData.relationships.trim();
+        // Handle both formats
+        if (toParse.includes("' +") || toParse.includes("\\n")) {
+          // JavaScript code format - clean it
+          toParse = toParse
+            .replace(/' \+/g, '')
+            .replace(/" \+/g, '')
+            .replace(/\\n/g, '')
+            .replace(/\n/g, '')
+            .replace(/'/g, '"');
+          const arrayStart = toParse.indexOf('[');
+          const arrayEnd = toParse.lastIndexOf(']');
+          if (arrayStart !== -1 && arrayEnd !== -1) {
+            toParse = toParse.substring(arrayStart, arrayEnd + 1);
+          }
+        } else if (toParse.includes("'")) {
+          // Single quotes - convert to double
+          toParse = toParse.replace(/'/g, '"');
+        }
+        updateData.relationships = JSON.parse(toParse);
+        console.log('FATAL recovery: Successfully parsed relationships at the last moment');
+      } catch (e: any) {
+        console.error('FATAL: Could not parse relationships even at the last moment:', e?.message);
+        updateData.relationships = [];
+      }
+    }
+    
+    // Final type check
+    if (!Array.isArray(updateData.relationships)) {
+      console.error('FATAL: relationships is not an array, setting to empty array');
+      updateData.relationships = [];
+    }
+    
+    console.log('About to save to Mongoose - relationships type:', typeof updateData.relationships, 'isArray:', Array.isArray(updateData.relationships));
+
     const character = await Character.findOneAndUpdate(
       legacyFilter,
       { $set: updateData },
