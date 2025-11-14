@@ -214,8 +214,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
                 } else {
                   throw new Error('Parsed result is not an array');
                 }
-              } catch (e) {
-                console.log('Failed to parse after quote conversion:', e.message);
+              } catch (e: any) {
+                console.log('Failed to parse after quote conversion:', e?.message || e);
                 // Continue to other cleaning methods
               }
             }
