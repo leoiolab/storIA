@@ -52,49 +52,65 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Middleware to fix relationships field if it's a string
+// This MUST run after express.json() but before routes
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.body && req.body.relationships && typeof req.body.relationships === 'string') {
-    try {
-      let toParse = req.body.relationships.trim();
-      console.log('Middleware: Detected relationships as string, attempting to parse...');
-      console.log('Middleware: String value (first 200 chars):', toParse.substring(0, 200));
-      
-      // Handle JavaScript code format first (has string concatenation)
-      if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n")) {
-        console.log('Middleware: Detected JavaScript code format');
-        toParse = toParse
-          .replace(/' \+/g, '')
-          .replace(/" \+/g, '')
-          .replace(/\\n/g, '')
-          .replace(/\n/g, '')
-          .replace(/\r/g, '')
-          .replace(/'/g, '"');
-        const arrayStart = toParse.indexOf('[');
-        const arrayEnd = toParse.lastIndexOf(']');
-        if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
-          toParse = toParse.substring(arrayStart, arrayEnd + 1);
+  // Only process PUT/POST requests with body
+  if (req.method === 'PUT' || req.method === 'POST') {
+    if (req.body && req.body.relationships && typeof req.body.relationships === 'string') {
+      try {
+        let toParse = req.body.relationships.trim();
+        console.log('=== MIDDLEWARE: Fixing relationships string ===');
+        console.log('Middleware: Original string (first 300 chars):', toParse.substring(0, 300));
+        
+        // Handle JavaScript code format first (has string concatenation like "[\n' + '  {\n' +")
+        if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n") || toParse.includes('\n')) {
+          console.log('Middleware: Detected JavaScript code format with concatenation');
+          // Remove all string concatenation operators
+          toParse = toParse
+            .replace(/' \+/g, '')
+            .replace(/" \+/g, '')
+            .replace(/\s*\+\s*/g, '') // Remove any remaining + operators with whitespace
+            .replace(/\\n/g, '') // Remove escaped newlines
+            .replace(/\n/g, '') // Remove actual newlines
+            .replace(/\r/g, '') // Remove carriage returns
+            .trim();
+          
+          // Extract array part
+          const arrayStart = toParse.indexOf('[');
+          const arrayEnd = toParse.lastIndexOf(']');
+          if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+            toParse = toParse.substring(arrayStart, arrayEnd + 1);
+          }
+          
+          // Convert single quotes to double quotes
+          toParse = toParse.replace(/'/g, '"');
+          console.log('Middleware: After cleaning (first 200 chars):', toParse.substring(0, 200));
+        } else if (toParse.includes("'")) {
+          // Handle single quotes (convert to double quotes)
+          console.log('Middleware: Detected single quotes, converting to double quotes');
+          toParse = toParse.replace(/'/g, '"');
         }
-      } else if (toParse.includes("'")) {
-        // Handle single quotes (convert to double quotes)
-        console.log('Middleware: Detected single quotes, converting to double quotes');
-        toParse = toParse.replace(/'/g, '"');
-      }
-      
-      // Try to parse
-      if (toParse.startsWith('[') && toParse.endsWith(']')) {
-        const parsed = JSON.parse(toParse);
-        if (Array.isArray(parsed)) {
-          req.body.relationships = parsed;
-          console.log('Middleware: Successfully fixed relationships from string to array, got', parsed.length, 'items');
+        
+        // Try to parse
+        if (toParse.startsWith('[') && toParse.endsWith(']')) {
+          const parsed = JSON.parse(toParse);
+          if (Array.isArray(parsed)) {
+            req.body.relationships = parsed;
+            console.log('Middleware: ✅ Successfully fixed relationships from string to array, got', parsed.length, 'items');
+            console.log('Middleware: Sample item:', JSON.stringify(parsed[0]));
+          } else {
+            console.error('Middleware: ❌ Parsed result is not an array:', typeof parsed, parsed);
+          }
         } else {
-          console.error('Middleware: Parsed result is not an array:', typeof parsed);
+          console.error('Middleware: ❌ String does not look like an array after cleaning');
+          console.error('Middleware: Cleaned string (first 200 chars):', toParse.substring(0, 200));
         }
-      } else {
-        console.error('Middleware: String does not look like an array:', toParse.substring(0, 100));
+      } catch (e: any) {
+        console.error('Middleware: ❌ Failed to parse relationships:', e?.message);
+        console.error('Middleware: Error stack:', e?.stack);
       }
-    } catch (e: any) {
-      console.error('Middleware: Failed to parse relationships:', e?.message);
-      console.error('Middleware: Error details:', e);
+    } else if (req.body && req.body.relationships) {
+      console.log('Middleware: relationships is not a string, type:', typeof req.body.relationships, 'isArray:', Array.isArray(req.body.relationships));
     }
   }
   next();
