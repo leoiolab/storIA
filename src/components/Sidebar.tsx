@@ -1,4 +1,4 @@
-import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck } from 'lucide-react';
+import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut } from 'lucide-react';
 import { ReactNode } from 'react';
 import './Sidebar.css';
 
@@ -8,9 +8,20 @@ interface SidebarProps {
   view: View;
   onViewChange: (view: View) => void;
   children?: ReactNode;
+  onLogout?: () => void;
+  userName?: string | null;
 }
 
-function Sidebar({ view, onViewChange, children }: SidebarProps) {
+function Sidebar({ view, onViewChange, children, onLogout, userName }: SidebarProps) {
+  const initials = userName
+    ? userName
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(name => name[0]?.toUpperCase())
+        .join('')
+    : '';
+
   return (
     <div className="sidebar">
         <div className="sidebar-header">
@@ -69,6 +80,26 @@ function Sidebar({ view, onViewChange, children }: SidebarProps) {
           <span>Story Arc</span>
         </button>
       </nav>
+
+      {onLogout && (
+        <div className="sidebar-footer">
+          {userName && (
+            <div className="sidebar-user">
+              <div className="user-avatar" aria-hidden="true">
+                {initials}
+              </div>
+              <div className="user-details">
+                <span className="user-label">Signed in as</span>
+                <span className="user-name">{userName}</span>
+              </div>
+            </div>
+          )}
+          <button className="logout-button" onClick={onLogout}>
+            <LogOut size={18} />
+            <span>Log out</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

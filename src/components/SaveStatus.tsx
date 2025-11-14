@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import './SaveStatus.css';
 
 type SaveStatus = 'saving' | 'saved' | 'error' | 'idle';
@@ -10,41 +9,36 @@ interface SaveStatusProps {
 }
 
 function SaveStatus({ status, lastSaved }: SaveStatusProps) {
-  const [showStatus, setShowStatus] = useState(false);
+  const resolvedStatus = status === 'idle' && lastSaved ? 'saved' as SaveStatus : status;
 
-  useEffect(() => {
-    if (status === 'saving' || status === 'error') {
-      setShowStatus(true);
-      const timer = setTimeout(() => setShowStatus(false), 3000);
-      return () => clearTimeout(timer);
-    } else if (status === 'saved') {
-      setShowStatus(true);
-      const timer = setTimeout(() => setShowStatus(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [status]);
-
-  if (!showStatus && status === 'idle') return null;
+  if (resolvedStatus === 'idle') return null;
 
   const getStatusInfo = () => {
-    switch (status) {
+    const savedLabel = lastSaved
+      ? `Saved at ${lastSaved.toLocaleTimeString()}`
+      : 'Saved';
+
+    switch (resolvedStatus) {
       case 'saving':
         return {
-          icon: <Loader size={14} className="spinning" />,
-          text: 'Saving...',
-          className: 'saving'
+          icon: <Loader2 size={16} className="spinning" />,
+          label: 'Saving…',
+          className: 'saving',
+          title: 'Saving changes…'
         };
       case 'saved':
         return {
-          icon: <CheckCircle size={14} />,
-          text: 'Saved',
-          className: 'saved'
+          icon: <Check size={16} />,
+          label: savedLabel,
+          className: 'saved',
+          title: savedLabel
         };
       case 'error':
         return {
-          icon: <AlertCircle size={14} />,
-          text: 'Save failed',
-          className: 'error'
+          icon: <AlertCircle size={16} />,
+          label: 'Save failed',
+          className: 'error',
+          title: 'Save failed. Check your connection and try again.'
         };
       default:
         return null;
@@ -55,18 +49,20 @@ function SaveStatus({ status, lastSaved }: SaveStatusProps) {
   if (!statusInfo) return null;
 
   return (
-    <div className={`save-status ${statusInfo.className}`}>
+    <div
+      className={`save-indicator ${statusInfo.className}`}
+      title={statusInfo.title}
+      role="status"
+      aria-live="polite"
+    >
       {statusInfo.icon}
-      <span>{statusInfo.text}</span>
-      {lastSaved && status === 'saved' && (
-        <span className="last-saved">
-          {lastSaved.toLocaleTimeString()}
-        </span>
-      )}
+      <span className="sr-only">{statusInfo.label}</span>
     </div>
   );
 }
 
 export default SaveStatus;
+
+
 
 

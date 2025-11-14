@@ -1,41 +1,52 @@
-.save-status {
+.save-indicator {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-  transition: all 0.3s ease;
+  justify-content: center;
+  background: rgba(32, 32, 32, 0.95);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  z-index: 900;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  backdrop-filter: blur(6px);
 }
 
-.save-status.saving {
-  background: rgba(255, 149, 0, 0.9);
-  color: white;
-  border: 1px solid rgba(255, 149, 0, 0.3);
+.save-indicator svg {
+  width: 18px;
+  height: 18px;
 }
 
-.save-status.saved {
-  background: rgba(52, 199, 89, 0.9);
-  color: white;
-  border: 1px solid rgba(52, 199, 89, 0.3);
+.save-indicator.saving {
+  background: rgba(255, 149, 0, 0.95);
 }
 
-.save-status.error {
-  background: rgba(255, 59, 48, 0.9);
-  color: white;
-  border: 1px solid rgba(255, 59, 48, 0.3);
+.save-indicator.saved {
+  background: rgba(52, 199, 89, 0.95);
 }
 
-.last-saved {
-  opacity: 0.8;
-  font-size: 10px;
-  margin-left: 4px;
+.save-indicator.error {
+  background: rgba(255, 69, 58, 0.95);
+}
+
+.save-indicator:hover {
+  transform: scale(1.05);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @keyframes spin {
@@ -50,5 +61,7 @@
 .spinning {
   animation: spin 1s linear infinite;
 }
+
+
 
 

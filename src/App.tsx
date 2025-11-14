@@ -20,19 +20,21 @@ import { initializeAI, isAIConfigured } from './services/ai';
 import { CloudStorageService, AuthUser } from './services/cloudStorage';
 import './App.css';
 
+const createInitialAppData = (): AppData => ({
+  books: [],
+  currentBookId: null,
+  aiConfig: {
+    provider: 'none',
+    apiKey: '',
+    model: 'gpt-4-turbo-preview',
+  },
+});
+
 function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [view, setView] = useState<View>('metadata');
-  const [appData, setAppData] = useState<AppData>({
-    books: [],
-    currentBookId: null,
-    aiConfig: {
-      provider: 'none',
-      apiKey: '',
-      model: 'gpt-4-turbo-preview',
-    },
-  });
+  const [appData, setAppData] = useState<AppData>(createInitialAppData);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -152,6 +154,20 @@ function App() {
       setSelectedChapter(null);
     }
   }, [user, loadProjects]);
+
+  const handleLogout = () => {
+    CloudStorageService.logout();
+    localStorage.removeItem('authorio_agent_history');
+    setUser(null);
+    setAppData(createInitialAppData());
+    setSelectedCharacter(null);
+    setSelectedChapter(null);
+    setAgentMessages([]);
+    setShowAgent(false);
+    setView('metadata');
+    setSaveStatus('idle');
+    setLastSaved(undefined);
+  };
 
   const handleSelectBook = async (bookId: string) => {
     if (!user || bookId === appData.currentBookId) return;
@@ -566,7 +582,12 @@ function App() {
 
   return (
     <div className={`app ${showAgent ? 'agent-open' : ''}`}>
-      <Sidebar view={view} onViewChange={setView}>
+      <Sidebar
+        view={view}
+        onViewChange={setView}
+        onLogout={user ? handleLogout : undefined}
+        userName={user?.name}
+      >
         <ProjectSwitcher
           books={appData.books}
           currentBook={currentBook}
