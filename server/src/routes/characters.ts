@@ -157,18 +157,46 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
     // Parse relationships if it's a string (legacy data or serialization issue)
     let relationships = req.body.relationships || [];
+    
+    // Debug logging
+    console.log('Update character - relationships type:', typeof relationships);
+    console.log('Update character - relationships value:', relationships);
+    
     if (typeof relationships === 'string') {
       try {
+        // Try to parse as JSON first
         relationships = JSON.parse(relationships);
       } catch (e) {
-        console.error('Failed to parse relationships string:', e);
-        relationships = [];
+        console.error('Failed to parse relationships as JSON:', e);
+        // If JSON parse fails, try to clean and parse again
+        try {
+          const cleaned = relationships.trim();
+          if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+            relationships = JSON.parse(cleaned);
+          } else {
+            relationships = [];
+          }
+        } catch (e2) {
+          console.error('Failed to parse relationships string completely:', e2);
+          relationships = [];
+        }
       }
     }
+    
     // Ensure relationships is an array
     if (!Array.isArray(relationships)) {
+      console.error('Relationships is not an array after parsing:', typeof relationships, relationships);
       relationships = [];
     }
+    
+    // Validate and clean relationships array - ensure all fields are strings
+    relationships = relationships
+      .filter(rel => rel && typeof rel === 'object')
+      .map(rel => ({
+        characterId: String(rel.characterId || ''),
+        type: String(rel.type || ''),
+        description: String(rel.description || '')
+      }));
 
     const updateData: Record<string, any> = {
       name: req.body.name,

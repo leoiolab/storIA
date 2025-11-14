@@ -9,9 +9,9 @@
 .content {
   display: flex;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   transition: margin-right 0.3s ease;
+  min-height: 0; /* Allow flex child to shrink below content size */
 }
 
 /* Adjust content when agent is open */
