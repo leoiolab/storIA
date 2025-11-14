@@ -1,4 +1,5 @@
 import express, { Response } from 'express';
+import { Types } from 'mongoose';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import Project from '../models/Project';
 
@@ -10,9 +11,14 @@ router.use(authenticateToken);
 // Get all projects for user
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userObjectId = new Types.ObjectId(req.userId);
     const legacyFilter = {
       $or: [
-        { userId: req.userId },
+        { userId: userObjectId },
         { userId: { $exists: false } },
         { userId: null }
       ]
@@ -22,12 +28,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const legacyIds = projects.filter(project => !project.userId).map(project => project._id);
 
     if (legacyIds.length > 0) {
-      await Project.updateMany(
-        { _id: { $in: legacyIds } },
-        { $set: { userId: req.userId } }
-      );
+      await Project.updateMany({ _id: { $in: legacyIds } }, { $set: { userId: userObjectId } });
 
-      const refreshed = await Project.find({ userId: req.userId }).sort({ updatedAt: -1 });
+      const refreshed = await Project.find({ userId: userObjectId }).sort({ updatedAt: -1 });
       return res.json(refreshed);
     }
 
@@ -41,10 +44,21 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Get single project
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userObjectId = new Types.ObjectId(req.userId);
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+
+    const projectObjectId = new Types.ObjectId(req.params.id);
+
     const legacyFilter = {
-      _id: req.params.id,
+      _id: projectObjectId,
       $or: [
-        { userId: req.userId },
+        { userId: userObjectId },
         { userId: { $exists: false } },
         { userId: null }
       ]
@@ -57,7 +71,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     if (!project.userId) {
-      project.userId = req.userId!;
+      project.userId = userObjectId;
       await project.save();
     }
 
@@ -71,8 +85,13 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Create project
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userObjectId = new Types.ObjectId(req.userId);
     const project = new Project({
-      userId: req.userId,
+      userId: userObjectId,
       name: req.body.name || 'Untitled Project',
       metadata: req.body.metadata || {},
       settings: req.body.settings || {}
@@ -89,6 +108,17 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update project
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userObjectId = new Types.ObjectId(req.userId);
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+
+    const projectObjectId = new Types.ObjectId(req.params.id);
+
     const updateData: Record<string, any> = {};
 
     if (typeof req.body.name === 'string' && req.body.name.trim().length > 0) {
@@ -112,9 +142,9 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     const legacyFilter = {
-      _id: req.params.id,
+      _id: projectObjectId,
       $or: [
-        { userId: req.userId },
+        { userId: userObjectId },
         { userId: { $exists: false } },
         { userId: null }
       ]
@@ -122,7 +152,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
     const project = await Project.findOneAndUpdate(
       legacyFilter,
-      { $set: { ...updateData, userId: req.userId } },
+      { $set: { ...updateData, userId: userObjectId } },
       { new: true, runValidators: true }
     );
     
@@ -140,10 +170,21 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Delete project
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userObjectId = new Types.ObjectId(req.userId);
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid project id' });
+    }
+
+    const projectObjectId = new Types.ObjectId(req.params.id);
+
     const legacyFilter = {
-      _id: req.params.id,
+      _id: projectObjectId,
       $or: [
-        { userId: req.userId },
+        { userId: userObjectId },
         { userId: { $exists: false } },
         { userId: null }
       ]
