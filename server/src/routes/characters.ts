@@ -184,11 +184,40 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         // First, try direct JSON parse (most common case - valid JSON string)
         if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
           try {
-            relationships = JSON.parse(cleaned);
+            const parsed = JSON.parse(cleaned);
+            if (Array.isArray(parsed)) {
+              relationships = parsed;
+              console.log('Successfully parsed relationships as JSON array:', relationships.length, 'items');
+            } else {
+              console.error('Parsed JSON is not an array:', typeof parsed, parsed);
+              relationships = [];
+            }
             // Successfully parsed, continue
           } catch (parseError) {
-            // If direct parse fails, it might be malformed JSON or JavaScript code
+            // If direct parse fails, it might be malformed JSON (e.g., single quotes instead of double)
             console.log('Direct JSON parse failed, trying to clean string:', parseError);
+            
+            // Check if it has single quotes (invalid JSON but valid JavaScript)
+            if (cleaned.includes("'") && !cleaned.includes('"')) {
+              console.log('Detected single quotes, converting to double quotes for JSON...');
+              // Replace single quotes with double quotes
+              cleaned = cleaned.replace(/'/g, '"');
+              try {
+                const parsed = JSON.parse(cleaned);
+                if (Array.isArray(parsed)) {
+                  relationships = parsed;
+                  console.log('Successfully parsed after converting single to double quotes');
+                  // Skip the rest of the error handling
+                } else {
+                  throw new Error('Parsed result is not an array');
+                }
+              } catch (e) {
+                console.log('Failed to parse after quote conversion, trying other methods...');
+              }
+            }
+            
+            // If we still don't have an array, continue with other cleaning methods
+            if (typeof relationships === 'string') {
             
             // Handle JavaScript code-like string format (e.g., "[\n' +\n  '  {\n' +...")
             // This happens when an array is converted to string using toString() or similar
