@@ -1,21 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Lock, Unlock } from 'lucide-react';
 import { Character, CharacterRelationship } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import './CharacterEditor.css';
+
+export type EntityState = 'new' | 'edit' | 'locked';
 
 interface CharacterEditorProps {
   character: Character | null;
   allCharacters: Character[];
   onUpdateCharacter: (character: Character) => void;
+  onStateChange?: (state: EntityState) => void;
 }
 
-function CharacterEditor({ character, allCharacters, onUpdateCharacter }: CharacterEditorProps) {
+function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateChange }: CharacterEditorProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [biography, setBiography] = useState('');
   const [characterArc, setCharacterArc] = useState('');
   const [relationships, setRelationships] = useState<CharacterRelationship[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
+  
+  // Determine current state
+  const getCurrentState = (): EntityState => {
+    if (!character) return 'new';
+    if (character.isLocked) return 'locked';
+    return 'edit';
+  };
+  
+  const currentState = getCurrentState();
 
   useEffect(() => {
     if (character) {
@@ -24,8 +37,18 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
       setBiography(character.biography);
       setCharacterArc(character.characterArc || '');
       setRelationships(character.relationships || []);
+      setIsLocked(character.isLocked || false);
+    } else {
+      setIsLocked(false);
     }
   }, [character]);
+  
+  // Notify parent of state changes
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange(currentState);
+    }
+  }, [currentState, onStateChange]);
 
   useEffect(() => {
     if (!character) return;
@@ -52,6 +75,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
         biography,
         characterArc,
         relationships,
+        isLocked,
         updatedAt: Date.now(),
       };
       onUpdateCharacter(updatedCharacter);
@@ -111,8 +135,27 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
         <div className="editor-header">
           <div className="editor-header-content">
             <span className="character-type-badge">{typeLabels[character.type]}</span>
-            <div className="character-meta">
-              Last edited: {new Date(character.updatedAt).toLocaleString()}
+            <div className="editor-header-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  const newLockedState = !isLocked;
+                  setIsLocked(newLockedState);
+                  onUpdateCharacter({
+                    ...character,
+                    isLocked: newLockedState,
+                    updatedAt: Date.now(),
+                  });
+                }}
+                className={`lock-btn ${isLocked ? 'locked' : ''}`}
+                title={isLocked ? 'Unlock to edit' : 'Lock to prevent editing'}
+              >
+                {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
+                <span>{isLocked ? 'Locked' : 'Unlocked'}</span>
+              </button>
+              <div className="character-meta">
+                Last edited: {new Date(character.updatedAt).toLocaleString()}
+              </div>
             </div>
           </div>
         </div>
@@ -127,6 +170,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
               onChange={(e) => setName(e.target.value)}
               placeholder="Character name..."
               className="input-field"
+              disabled={isLocked}
             />
           </div>
 
@@ -139,6 +183,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
               placeholder="A brief description of the character..."
               className="textarea-field textarea-small"
               rows={3}
+              disabled={isLocked}
             />
           </div>
 
@@ -150,6 +195,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
               onChange={(e) => setBiography(e.target.value)}
               placeholder="Write the complete biography, backstory, personality traits, motivations, and any other details about the character..."
               className="textarea-field textarea-large"
+              disabled={isLocked}
             />
           </div>
 
@@ -162,6 +208,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
               placeholder="Describe how this character changes and develops throughout the story. What do they learn? How do they grow? What challenges transform them?"
               className="textarea-field textarea-medium"
               rows={5}
+              disabled={isLocked}
             />
           </div>
 
@@ -173,6 +220,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
                 onClick={handleAddRelationship}
                 className="add-relationship-btn"
                 title="Add relationship"
+                disabled={isLocked}
               >
                 <Plus size={16} />
                 Add Relationship
@@ -194,6 +242,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
                           value={rel.targetCharacterId}
                           onChange={(e) => handleUpdateRelationship(index, 'targetCharacterId', e.target.value)}
                           className="select-field"
+                          disabled={isLocked}
                         >
                           <option value="">Select a character...</option>
                           {availableCharacters.map(char => (
@@ -210,6 +259,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
                           onChange={(e) => handleUpdateRelationship(index, 'relationshipType', e.target.value)}
                           placeholder="e.g., Friend, Enemy, Mentor, Sibling..."
                           className="input-field"
+                          disabled={isLocked}
                         />
                       </div>
                     </div>
@@ -222,6 +272,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
                         placeholder="Describe the nature of their relationship, history, dynamics..."
                         className="textarea-field"
                         rows={2}
+                        disabled={isLocked}
                       />
                     </div>
 
@@ -230,6 +281,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter }: Charac
                       onClick={() => handleRemoveRelationship(index)}
                       className="remove-relationship-btn"
                       title="Remove relationship"
+                      disabled={isLocked}
                     >
                       <Trash2 size={16} />
                     </button>

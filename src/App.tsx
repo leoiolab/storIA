@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Sidebar, { View } from './components/Sidebar';
 import ProjectSwitcher from './components/ProjectSwitcher';
 import CharactersList from './components/CharactersList';
-import CharacterEditor from './components/CharacterEditor';
+import CharacterEditor, { EntityState } from './components/CharacterEditor';
 import ChaptersList from './components/ChaptersList';
 import ChapterEditor from './components/ChapterEditor';
 import BookMetadataEditor from './components/BookMetadataEditor';
@@ -44,6 +44,8 @@ function App() {
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   const [showAgent, setShowAgent] = useState(false);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+  const [characterState, setCharacterState] = useState<EntityState>('new');
+  const [chapterState, setChapterState] = useState<EntityState>('new');
 
   const deriveAIConfigFromSettings = useCallback(
     (settings?: ProjectSettings | null): AIConfig => ({
@@ -583,6 +585,7 @@ function App() {
               character={selectedCharacter}
               allCharacters={currentBook.characters}
               onUpdateCharacter={handleUpdateCharacter}
+              onStateChange={setCharacterState}
             />
           </>
         );
@@ -600,6 +603,7 @@ function App() {
             <ChapterEditor
               chapter={selectedChapter}
               onUpdateChapter={handleUpdateChapter}
+              onStateChange={setChapterState}
             />
           </>
         );
@@ -689,6 +693,8 @@ function App() {
           activeView={view}
           currentChapter={selectedChapter}
           currentCharacter={selectedCharacter}
+          chapterState={chapterState}
+          characterState={characterState}
           messages={agentMessages}
           setMessages={setAgentMessages}
           isOpen={showAgent}

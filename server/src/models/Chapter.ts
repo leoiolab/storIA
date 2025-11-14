@@ -13,6 +13,7 @@ export interface IChapter extends Document {
     description: string;
   }>;
   wordCount: number;
+  isLocked?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +61,10 @@ const chapterSchema = new Schema<IChapter>({
   wordCount: {
     type: Number,
     default: 0
+  },
+  isLocked: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen } from 'lucide-react';
 import { Book, Character, Chapter } from '../types';
 import type { View } from './Sidebar';
+import type { EntityState } from './CharacterEditor';
 import { chatWithAI, isAIConfigured } from '../services/ai';
 import './CursorAgent.css';
 
@@ -25,7 +26,9 @@ const buildContextSummary = (
   book: Book,
   activeView: View,
   currentChapter?: Chapter | null,
-  currentCharacter?: Character | null
+  currentCharacter?: Character | null,
+  chapterState?: EntityState,
+  characterState?: EntityState
 ) => {
   const sections: string[] = [];
 
@@ -43,6 +46,9 @@ const buildContextSummary = (
     const chapterSection: string[] = [
       `Focused Chapter: "${currentChapter.title}" (order ${currentChapter.order + 1})`
     ];
+    if (chapterState) {
+      chapterSection.push(`Chapter State: ${chapterState === 'new' ? 'NEW - Being created for the first time' : chapterState === 'locked' ? 'LOCKED - Cannot be edited' : 'EDIT - Currently being edited'}`);
+    }
     if (currentChapter.synopsis) {
       chapterSection.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
     }
@@ -60,9 +66,11 @@ const buildContextSummary = (
 
   if (currentCharacter) {
     const arcSnippet = currentCharacter.characterArc ? `\nCharacter Arc: ${currentCharacter.characterArc}` : '';
+    const stateInfo = characterState ? `\nCharacter State: ${characterState === 'new' ? 'NEW - Being created for the first time' : characterState === 'locked' ? 'LOCKED - Cannot be edited' : 'EDIT - Currently being edited'}` : '';
     sections.push(
       [
         `Focused Character: ${currentCharacter.name} (${currentCharacter.type})`,
+        stateInfo || null,
         currentCharacter.description ? `Description: ${currentCharacter.description}` : null,
         arcSnippet || null,
       ]
@@ -102,6 +110,8 @@ interface CursorAgentProps {
   activeView: View;
   currentChapter?: Chapter | null;
   currentCharacter?: Character | null;
+  chapterState?: EntityState;
+  characterState?: EntityState;
   messages: AgentMessage[];
   setMessages: React.Dispatch<React.SetStateAction<AgentMessage[]>>;
   onInsertText?: (text: string) => void;
@@ -117,6 +127,8 @@ function CursorAgent({
   activeView,
   currentChapter,
   currentCharacter,
+  chapterState,
+  characterState,
   messages,
   setMessages,
   onInsertText,
@@ -153,8 +165,8 @@ function CursorAgent({
   }, [input]);
 
   const contextSummary = useMemo(
-    () => buildContextSummary(book, activeView, currentChapter, currentCharacter),
-    [book, activeView, currentChapter, currentCharacter]
+    () => buildContextSummary(book, activeView, currentChapter, currentCharacter, chapterState, characterState),
+    [book, activeView, currentChapter, currentCharacter, chapterState, characterState]
   );
 
   const handleSend = async () => {
@@ -202,9 +214,35 @@ function CursorAgent({
       const wantsModification = /update|add|remove|delete|change|modify|edit|rewrite|improve|enhance|refine|fix|adjust|revise/i.test(userPrompt);
       
       let enhancedPrompt = userPrompt;
+      // Build duplicate checking info
+      const existingCharacterNames = book.characters.map(c => c.name.toLowerCase().trim());
+      const existingChapterTitles = book.chapters.map(c => c.title.toLowerCase().trim());
+      
+      let duplicateWarning = '';
+      if (characterState === 'new' && currentCharacter) {
+        const currentName = currentCharacter.name.toLowerCase().trim();
+        if (existingCharacterNames.includes(currentName)) {
+          duplicateWarning = `\n\n⚠️ WARNING: A character named "${currentCharacter.name}" already exists in this book. Do NOT create a duplicate. Instead, suggest updating the existing character or using a different name.`;
+        }
+      }
+      if (chapterState === 'new' && currentChapter) {
+        const currentTitle = currentChapter.title.toLowerCase().trim();
+        if (existingChapterTitles.includes(currentTitle)) {
+          duplicateWarning = `\n\n⚠️ WARNING: A chapter titled "${currentChapter.title}" already exists in this book. Do NOT create a duplicate. Instead, suggest updating the existing chapter or using a different title.`;
+        }
+      }
+      
       let systemPrompt = `You are an intelligent AI writing assistant with full context of the user's book.
 
 ${contextSummary}
+
+IMPORTANT RULES:
+1. If the character/chapter state is "NEW", check if a character/chapter with the same name/title already exists before creating.
+2. If the character/chapter state is "LOCKED", you CANNOT make changes - inform the user they need to unlock it first.
+3. If the character/chapter state is "EDIT", you can suggest updates and improvements.
+4. Existing characters: ${book.characters.map(c => c.name).join(', ')}
+5. Existing chapters: ${book.chapters.map(c => c.title).join(', ')}
+${duplicateWarning}
 
 Help the user with character development, plot ideas, writing suggestions, dialogue, and any creative writing needs. Be specific and helpful, considering the context of their story.`;
 

@@ -15,6 +15,7 @@ export interface ICharacter extends Document {
     type: string;
     description: string;
   }>;
+  isLocked?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +68,10 @@ const characterSchema = new Schema<ICharacter>({
       description: { type: String, default: '' }
     }],
     default: []
+  },
+  isLocked: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

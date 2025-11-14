@@ -74,7 +74,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         synopsis: req.body.synopsis,
         notes: req.body.notes,
         order: req.body.order,
-        plotPoints: req.body.plotPoints
+        plotPoints: req.body.plotPoints,
+        isLocked: req.body.isLocked
       },
       { new: true, runValidators: true }
     );

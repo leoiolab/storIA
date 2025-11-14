@@ -16,6 +16,7 @@ export interface Character {
   age?: number;
   role?: string;
   relationships: CharacterRelationship[];
+  isLocked?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -35,6 +36,7 @@ export interface Chapter {
   notes?: string;
   wordCount?: number;
   plotPoints?: PlotPoint[];
+  isLocked?: boolean;
   createdAt: number;
   updatedAt: number;
 }

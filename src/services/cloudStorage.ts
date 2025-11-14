@@ -235,7 +235,8 @@ export class CloudStorageService {
       characterArc: character.characterArc,
       age: character.age,
       role: character.role,
-      relationships: relationships // This should be an array, not a string
+      relationships: relationships, // This should be an array, not a string
+      isLocked: character.isLocked
     };
 
     // Debug: Log what we're sending
@@ -289,6 +290,7 @@ export class CloudStorageService {
       body: JSON.stringify({
         title: chapter.title,
         content: chapter.content,
+        isLocked: chapter.isLocked,
         synopsis: chapter.synopsis,
         notes: chapter.notes,
         order: chapter.order,
@@ -374,6 +376,7 @@ export class CloudStorageService {
         relationshipType: rel.type,
         description: rel.description,
       })),
+      isLocked: char.isLocked || false,
       createdAt: char.createdAt ? new Date(char.createdAt).getTime() : Date.now(),
       updatedAt: char.updatedAt ? new Date(char.updatedAt).getTime() : Date.now(),
     };
@@ -389,6 +392,7 @@ export class CloudStorageService {
       order: chapter.order,
       plotPoints: CloudStorageService.mapPlotPointsFromAPI(chapter.plotPoints || [], chapter._id),
       wordCount: chapter.wordCount || 0,
+      isLocked: chapter.isLocked || false,
       createdAt: chapter.createdAt ? new Date(chapter.createdAt).getTime() : Date.now(),
       updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : Date.now(),
     };

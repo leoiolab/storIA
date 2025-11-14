@@ -351,7 +351,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         age: req.body.age,
         role: req.body.role,
       relationships: relationships, // This MUST be an array, not a string
-      userId: userObjectId // Ensure userId is set
+      userId: userObjectId, // Ensure userId is set
+      isLocked: req.body.isLocked !== undefined ? req.body.isLocked : false
     };
 
     // Double-check updateData.relationships is an array
@@ -475,7 +476,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         age: updateData.age,
         role: updateData.role,
         userId: updateData.userId,
-        relationships: Array.isArray(updateData.relationships) ? updateData.relationships : []
+        relationships: Array.isArray(updateData.relationships) ? updateData.relationships : [],
+        isLocked: updateData.isLocked !== undefined ? updateData.isLocked : false
       }
     };
     
