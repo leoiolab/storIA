@@ -116,6 +116,49 @@
   margin: 4px 0;
 }
 
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .project-switcher {
+    padding: 0 12px 16px;
+  }
+
+  .current-project {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .project-dropdown {
+    left: 12px;
+    right: 12px;
+  }
+
+  .dropdown-item {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .project-switcher {
+    padding: 0 10px 12px;
+  }
+
+  .current-project {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .project-dropdown {
+    left: 10px;
+    right: 10px;
+  }
+
+  .dropdown-item {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
+
 
 
 

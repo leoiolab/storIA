@@ -1,5 +1,11 @@
 export type CharacterType = 'main' | 'secondary' | 'tertiary';
 
+export interface ProjectSettings {
+  aiProvider?: 'openai' | 'anthropic';
+  aiModel?: string;
+  aiApiKey?: string;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -74,7 +80,7 @@ export interface Book {
   chapters: Chapter[];
   plotPoints: PlotPoint[];
   timeline: Timeline;
-  settings?: any;
+  settings?: ProjectSettings;
   createdAt: number;
   updatedAt: number;
 }

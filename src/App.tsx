@@ -15,7 +15,7 @@ import SettingsModal from './components/SettingsModal';
 import ExportModal from './components/ExportModal';
 import SaveStatus from './components/SaveStatus';
 import AuthScreen from './components/AuthScreen';
-import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, PlotPoint, Timeline } from './types';
+import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, PlotPoint, Timeline, ProjectSettings } from './types';
 import { initializeAI, isAIConfigured } from './services/ai';
 import { CloudStorageService, AuthUser } from './services/cloudStorage';
 import './App.css';
@@ -44,6 +44,15 @@ function App() {
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   const [showAgent, setShowAgent] = useState(false);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+
+  const deriveAIConfigFromSettings = useCallback(
+    (settings?: ProjectSettings | null): AIConfig => ({
+      provider: settings?.aiProvider ?? 'none',
+      apiKey: settings?.aiApiKey ?? '',
+      model: settings?.aiModel ?? 'gpt-4-turbo-preview',
+    }),
+    []
+  );
 
   // Check authentication on mount
   useEffect(() => {
@@ -118,17 +127,37 @@ function App() {
           ...prev,
           books: [newProject],
           currentBookId: newProject.id,
+          aiConfig: createInitialAppData().aiConfig,
         }));
         setView('metadata');
+        initializeAI('');
       } else {
         const [firstProject, ...otherProjects] = projects;
         const detailedFirst = await CloudStorageService.getProject(firstProject.id);
+        
+        // Debug: Log settings to help diagnose issues
+        console.log('Loaded project settings:', {
+          projectId: detailedFirst.id,
+          settings: detailedFirst.settings,
+          hasApiKey: !!detailedFirst.settings?.aiApiKey
+        });
+        
+        const nextAiConfig = deriveAIConfigFromSettings(detailedFirst.settings);
 
         setAppData(prev => ({
           ...prev,
           books: [detailedFirst, ...otherProjects],
           currentBookId: detailedFirst.id,
+          aiConfig: nextAiConfig,
         }));
+
+        if (nextAiConfig.apiKey) {
+          console.log('Initializing AI with API key');
+          initializeAI(nextAiConfig.apiKey);
+        } else {
+          console.log('No API key found, initializing AI without key');
+          initializeAI('');
+        }
       }
 
       setSaveStatus('saved');
@@ -139,7 +168,7 @@ function App() {
     } finally {
       setIsLoadingBooks(false);
     }
-  }, [user]);
+  }, [user, deriveAIConfigFromSettings]);
 
   useEffect(() => {
     if (user) {
@@ -177,6 +206,7 @@ function App() {
 
     try {
       const project = await CloudStorageService.getProject(bookId);
+      const nextAiConfig = deriveAIConfigFromSettings(project.settings);
 
       setAppData(prev => {
         const remaining = prev.books.filter(book => book.id !== bookId);
@@ -184,8 +214,15 @@ function App() {
           ...prev,
           books: [project, ...remaining],
           currentBookId: bookId,
+          aiConfig: nextAiConfig,
         };
       });
+
+      if (nextAiConfig.apiKey) {
+        initializeAI(nextAiConfig.apiKey);
+      } else {
+        initializeAI('');
+      }
       setSelectedCharacter(null);
       setSelectedChapter(null);
       setSaveStatus('saved');
@@ -218,12 +255,14 @@ function App() {
         ...prev,
         books: [newProject, ...prev.books.filter(book => book.id !== newProject.id)],
         currentBookId: newProject.id,
+        aiConfig: createInitialAppData().aiConfig,
       }));
       setSelectedCharacter(null);
       setSelectedChapter(null);
       setView('metadata');
       setSaveStatus('saved');
       setLastSaved(new Date());
+      initializeAI('');
     } catch (error) {
       console.error('Failed to create project:', error);
       setSaveStatus('error');
@@ -432,35 +471,61 @@ function App() {
   };
 
   const handleSaveSettings = async (aiConfig: AIConfig) => {
+    const sanitizedProvider = aiConfig.provider === 'none' ? undefined : aiConfig.provider;
+    const sanitizedApiKey =
+      sanitizedProvider && aiConfig.apiKey && aiConfig.apiKey.trim() ? aiConfig.apiKey.trim() : undefined;
+    const sanitizedModel = aiConfig.model || 'gpt-4-turbo-preview';
+
+    const nextAiConfig: AIConfig = {
+      provider: aiConfig.provider,
+      apiKey: sanitizedApiKey ?? '',
+      model: sanitizedModel,
+    };
+
     setAppData(prev => ({
       ...prev,
-      aiConfig,
+      aiConfig: nextAiConfig,
     }));
 
-    if (aiConfig.apiKey) {
-      initializeAI(aiConfig.apiKey);
-    }
+    initializeAI(sanitizedApiKey ?? '');
 
     if (!currentBook) return;
 
     setSaveStatus('saving');
 
+    const settingsToSave = {
+      aiProvider: sanitizedProvider,
+      aiModel: sanitizedModel,
+      aiApiKey: sanitizedApiKey,
+    };
+
+    // Debug: Log what we're saving
+    console.log('Saving settings:', {
+      projectId: currentBook.id,
+      settings: settingsToSave,
+      hasApiKey: !!sanitizedApiKey
+    });
+
     try {
       await CloudStorageService.updateProject(currentBook.id, {
         metadata: currentBook.metadata,
-        settings: {
-          ...(currentBook.settings || {}),
-          aiProvider: aiConfig.provider === 'none' ? undefined : aiConfig.provider,
-          aiModel: aiConfig.model,
-        },
+        settings: settingsToSave,
+      });
+
+      // Verify the save by fetching the project again
+      const updatedProject = await CloudStorageService.getProject(currentBook.id);
+      console.log('Settings saved, verified:', {
+        projectId: updatedProject.id,
+        settings: updatedProject.settings,
+        hasApiKey: !!updatedProject.settings?.aiApiKey
       });
 
       updateCurrentBook(book => ({
         ...book,
         settings: {
-          ...(book.settings || {}),
-          aiProvider: aiConfig.provider === 'none' ? undefined : aiConfig.provider,
-          aiModel: aiConfig.model,
+          aiProvider: sanitizedProvider,
+          aiModel: sanitizedModel,
+          aiApiKey: sanitizedApiKey,
         },
       }));
       setSaveStatus('saved');
@@ -681,6 +746,7 @@ function App() {
                 ...selectedCharacter,
                 description: characterData.quickDescription || characterData.description || selectedCharacter.description,
                 biography: characterData.fullBio || characterData.biography || characterData.bio || selectedCharacter.biography,
+                characterArc: characterData.characterArc || selectedCharacter.characterArc,
                 age: characterData.age || selectedCharacter.age,
                 role: characterData.role || selectedCharacter.role,
               });

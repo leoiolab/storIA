@@ -119,6 +119,15 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
     const projectObjectId = new Types.ObjectId(req.params.id);
 
+    const legacyFilter = {
+      _id: projectObjectId,
+      $or: [
+        { userId: userObjectId },
+        { userId: { $exists: false } },
+        { userId: null }
+      ]
+    };
+
     const updateData: Record<string, any> = {};
 
     if (typeof req.body.name === 'string' && req.body.name.trim().length > 0) {
@@ -138,17 +147,17 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     if (req.body.settings) {
-      updateData.settings = req.body.settings;
+      // Merge settings to preserve existing values
+      const project = await Project.findOne(legacyFilter);
+      const existingSettings = project?.settings || {};
+      updateData.settings = {
+        ...existingSettings,
+        // Only include fields that are explicitly provided (not undefined)
+        ...(req.body.settings.aiProvider !== undefined && { aiProvider: req.body.settings.aiProvider }),
+        ...(req.body.settings.aiModel !== undefined && { aiModel: req.body.settings.aiModel }),
+        ...(req.body.settings.aiApiKey !== undefined && { aiApiKey: req.body.settings.aiApiKey }),
+      };
     }
-
-    const legacyFilter = {
-      _id: projectObjectId,
-      $or: [
-        { userId: userObjectId },
-        { userId: { $exists: false } },
-        { userId: null }
-      ]
-    };
 
     const project = await Project.findOneAndUpdate(
       legacyFilter,

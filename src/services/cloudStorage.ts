@@ -154,12 +154,20 @@ export class CloudStorageService {
   }
 
   static async updateProject(id: string, data: Partial<Book>): Promise<Book> {
+    const sanitizedSettings = data.settings
+      ? {
+          aiProvider: data.settings.aiProvider,
+          aiModel: data.settings.aiModel,
+          aiApiKey: data.settings.aiApiKey,
+        }
+      : undefined;
+
     const project = await this.request(`/projects/${id}`, {
       method: 'PUT',
       body: JSON.stringify({
         name: data.metadata?.title || 'Untitled',
         metadata: data.metadata,
-        settings: data.settings,
+        settings: sanitizedSettings,
       }),
     });
 
@@ -287,6 +295,21 @@ export class CloudStorageService {
   private static mapProjectToBook(project: any): Book {
     const createdAt = project.createdAt ? new Date(project.createdAt).getTime() : Date.now();
     const updatedAt = project.updatedAt ? new Date(project.updatedAt).getTime() : createdAt;
+    
+    // Ensure settings are properly mapped, even if partially defined
+    const settings: any = {};
+    if (project.settings) {
+      if (project.settings.aiProvider !== undefined) {
+        settings.aiProvider = project.settings.aiProvider;
+      }
+      if (project.settings.aiModel !== undefined) {
+        settings.aiModel = project.settings.aiModel;
+      }
+      if (project.settings.aiApiKey !== undefined && project.settings.aiApiKey !== null) {
+        settings.aiApiKey = project.settings.aiApiKey;
+      }
+    }
+    
     return {
       id: project._id,
       metadata: {
@@ -306,7 +329,7 @@ export class CloudStorageService {
       chapters: [],
       plotPoints: [],
       timeline: CloudStorageService.mapTimelineFromAPI(project.timeline, project._id),
-      settings: project.settings || {},
+      settings,
       createdAt,
       updatedAt,
     };

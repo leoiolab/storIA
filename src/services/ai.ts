@@ -9,6 +9,8 @@ export function initializeAI(apiKey: string) {
       apiKey: apiKey,
       dangerouslyAllowBrowser: true, // Note: In production, API calls should go through backend
     });
+  } else {
+    openaiClient = null;
   }
 }
 
