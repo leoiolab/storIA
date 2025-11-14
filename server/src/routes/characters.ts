@@ -284,6 +284,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
                 relationships = [];
               }
             }
+            }
           }
         } else {
           // Doesn't look like an array string, set to empty
