@@ -31,6 +31,38 @@
   margin-bottom: 24px;
 }
 
+.metadata-content .input-field,
+.metadata-content .textarea-field {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(243, 214, 195, 0.75);
+  border-radius: 10px;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 18px rgba(223, 177, 140, 0.12);
+}
+
+.metadata-content .input-field:focus,
+.metadata-content .textarea-field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.18);
+}
+
+.metadata-content .input-field::placeholder,
+.metadata-content .textarea-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.metadata-content .textarea-field {
+  resize: vertical;
+  min-height: 140px;
+}
+
 .metadata-content .form-group:last-child {
   margin-bottom: 0;
 }
