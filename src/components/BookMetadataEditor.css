@@ -3,19 +3,20 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #1a1a1a;
+  background: var(--color-surface);
 }
 
 .metadata-header {
   padding: 24px 32px;
-  border-bottom: 1px solid #3a3a3a;
-  background: #232323;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+  box-shadow: var(--shadow-soft);
 }
 
 .metadata-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-heading);
   margin: 0;
 }
 
@@ -23,6 +24,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 32px;
+  background: var(--color-surface);
 }
 
 .metadata-content .form-group {
@@ -32,6 +34,8 @@
 .metadata-content .form-group:last-child {
   margin-bottom: 0;
 }
+
+
 
 
 

@@ -1,16 +1,17 @@
 .chapters-list {
   width: 320px;
-  background: #232323;
-  border-right: 1px solid #3a3a3a;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.35);
 }
 
 .chapters-list .list-header {
   padding: 20px;
-  border-bottom: 1px solid #3a3a3a;
-  background: #252525;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,7 +20,7 @@
 .chapters-list .list-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-heading);
 }
 
 .add-button {
@@ -27,17 +28,19 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: #007aff;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
   border: none;
-  color: white;
+  color: #fff;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   transition: all 0.2s ease;
+  box-shadow: 0 10px 20px rgba(255, 122, 89, 0.25);
 }
 
 .add-button:hover {
-  background: #0066dd;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 122, 89, 0.3);
 }
 
 .chapters-list .list-content {
@@ -57,7 +60,7 @@
 
 .empty-state-large p {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-muted);
   margin-bottom: 20px;
 }
 
@@ -66,17 +69,19 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: #007aff;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
   border: none;
-  color: white;
+  color: #fff;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s ease;
+  box-shadow: 0 10px 20px rgba(255, 122, 89, 0.25);
 }
 
 .add-button-large:hover {
-  background: #0066dd;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(255, 122, 89, 0.3);
 }
 
 .chapters-container {
@@ -90,25 +95,27 @@
   align-items: flex-start;
   gap: 8px;
   padding: 14px;
-  background: #2a2a2a;
-  border: 1px solid transparent;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 8px 18px rgba(227, 173, 138, 0.18);
 }
 
 .chapter-item:hover {
-  background: #303030;
-  border-color: #3a3a3a;
+  background: var(--color-surface-alt);
+  border-color: var(--color-border-strong);
 }
 
 .chapter-item.active {
-  background: #1a3a5a;
-  border-color: #007aff;
+  background: linear-gradient(135deg, rgba(255, 122, 89, 0.16), rgba(255, 183, 3, 0.26));
+  border-color: rgba(255, 122, 89, 0.45);
+  box-shadow: 0 12px 26px rgba(255, 122, 89, 0.25);
 }
 
 .chapter-drag-handle {
-  color: #555;
+  color: var(--color-text-muted);
   cursor: grab;
   padding-top: 2px;
   opacity: 0;
@@ -134,20 +141,20 @@
 .chapter-number {
   font-size: 11px;
   font-weight: 600;
-  color: #888;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .chapter-word-count {
   font-size: 11px;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .chapter-title {
   font-size: 14px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text-heading);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -156,7 +163,7 @@
 
 .chapter-preview {
   font-size: 12px;
-  color: #888;
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -173,7 +180,7 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--color-text-muted);
   border-radius: 4px;
   transition: all 0.2s ease;
   padding: 0;
@@ -186,9 +193,11 @@
 }
 
 .chapter-item .delete-button:hover {
-  background: #ff3b30;
-  color: white;
+  background: rgba(242, 95, 76, 0.15);
+  color: var(--color-accent-strong);
 }
+
+
 
 
 

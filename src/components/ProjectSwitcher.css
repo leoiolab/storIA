@@ -1,7 +1,7 @@
 .project-switcher {
   position: relative;
   padding: 0 12px 20px;
-  border-bottom: 1px solid #3a3a3a;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .current-project {
@@ -10,18 +10,19 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #333;
-  border: 1px solid #3a3a3a;
-  color: #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-heading);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.2s ease;
+  box-shadow: 0 8px 16px rgba(233, 184, 153, 0.2);
 }
 
 .current-project:hover {
-  background: #3a3a3a;
-  border-color: #4a4a4a;
+  background: var(--color-surface-soft);
+  border-color: var(--color-border-strong);
 }
 
 .project-name {
@@ -55,10 +56,10 @@
   left: 12px;
   right: 12px;
   margin-top: 4px;
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-card);
   z-index: 999;
   overflow: hidden;
 }
@@ -71,7 +72,7 @@
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #888;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -84,7 +85,7 @@
   padding: 10px 12px;
   background: transparent;
   border: none;
-  color: #e0e0e0;
+  color: var(--color-text-secondary);
   border-radius: 4px;
   font-size: 13px;
   text-align: left;
@@ -92,28 +93,30 @@
 }
 
 .dropdown-item:hover {
-  background: #333;
+  background: var(--color-surface-soft);
 }
 
 .dropdown-item.active {
-  background: #007aff;
-  color: white;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+  color: #fff;
 }
 
 .dropdown-item.create {
-  color: #007aff;
+  color: var(--color-accent-strong);
   font-weight: 500;
 }
 
 .dropdown-item.create:hover {
-  background: rgba(0, 122, 255, 0.1);
+  background: rgba(255, 122, 89, 0.12);
 }
 
 .dropdown-divider {
   height: 1px;
-  background: #3a3a3a;
+  background: var(--color-border);
   margin: 4px 0;
 }
+
+
 
 
 

@@ -9,7 +9,7 @@
   justify-content: center;
   padding: 80px 20px;
   text-align: center;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .story-arc-empty svg {
@@ -28,7 +28,7 @@
 .arc-header h3 {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-heading);
   margin: 0 0 16px 0;
 }
 
@@ -46,12 +46,12 @@
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #007aff;
+  color: var(--color-accent-strong);
 }
 
 .stat-label {
   font-size: 11px;
-  color: #888;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -86,19 +86,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #007aff;
-  color: white;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+  color: #ffffff;
   border-radius: 50%;
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 0 0 4px #1a1a1a;
+  box-shadow: 0 0 0 4px var(--color-bg);
   z-index: 1;
 }
 
 .marker-line {
   width: 2px;
   flex: 1;
-  background: #3a3a3a;
+  background: var(--color-border);
   margin-top: 8px;
   min-height: 40px;
 }
@@ -106,9 +106,10 @@
 .timeline-content {
   flex: 1;
   padding: 8px 20px;
-  background: #232323;
-  border: 1px solid #3a3a3a;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
+  box-shadow: var(--shadow-card);
 }
 
 .timeline-header {
@@ -121,17 +122,17 @@
 .timeline-title {
   font-size: 16px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text-heading);
 }
 
 .timeline-meta {
   font-size: 12px;
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 .timeline-synopsis {
   font-size: 13px;
-  color: #b0b0b0;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   margin-bottom: 12px;
 }
@@ -147,7 +148,7 @@
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
-  color: white;
+  color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -155,14 +156,16 @@
 .arc-legend {
   margin-top: 40px;
   padding: 20px;
-  background: #232323;
+  background: var(--color-surface);
   border-radius: 12px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
 }
 
 .arc-legend h4 {
   font-size: 12px;
   font-weight: 600;
-  color: #888;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 12px 0;
@@ -188,8 +191,10 @@
 
 .legend-label {
   font-size: 12px;
-  color: #b0b0b0;
+  color: var(--color-text-secondary);
 }
+
+
 
 
 

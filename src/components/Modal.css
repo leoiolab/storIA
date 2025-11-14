@@ -4,24 +4,24 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(255, 240, 229, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 30px 60px rgba(223, 177, 140, 0.35);
 }
 
 .modal-header {
@@ -29,13 +29,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 24px 28px;
-  border-bottom: 1px solid #3a3a3a;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
 }
 
 .modal-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-heading);
   margin: 0;
 }
 
@@ -47,15 +48,15 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--color-text-muted);
   border-radius: 6px;
   transition: all 0.2s ease;
   padding: 0;
 }
 
 .close-button:hover {
-  background: #333;
-  color: #e0e0e0;
+  background: rgba(255, 122, 89, 0.12);
+  color: var(--color-accent-strong);
 }
 
 .modal-body {
@@ -70,7 +71,8 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 28px;
-  border-top: 1px solid #3a3a3a;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
 }
 
 .form-section {
@@ -84,13 +86,13 @@
 .form-section h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-heading);
   margin-bottom: 8px;
 }
 
 .form-description {
   font-size: 13px;
-  color: #888;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   margin-bottom: 20px;
 }
@@ -107,25 +109,26 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #b0b0b0;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 
 .select-field {
   width: 100%;
   padding: 10px 14px;
-  background: #1a1a1a;
-  border: 1px solid #3a3a3a;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: var(--color-text-primary);
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .select-field:focus {
   outline: none;
-  border-color: #007aff;
-  background: #1f1f1f;
+  border-color: var(--color-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.2);
 }
 
 .input-with-icon {
@@ -148,20 +151,20 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--color-text-muted);
   border-radius: 4px;
   transition: all 0.2s ease;
   padding: 0;
 }
 
 .icon-button:hover {
-  background: #333;
-  color: #888;
+  background: rgba(255, 122, 89, 0.12);
+  color: var(--color-accent-strong);
 }
 
 .field-hint {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-muted);
   margin-top: 6px;
   line-height: 1.4;
 }
@@ -177,24 +180,27 @@
 }
 
 .button-primary {
-  background: #007aff;
-  color: white;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(255, 122, 89, 0.3);
 }
 
 .button-primary:hover {
-  background: #0066dd;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 122, 89, 0.35);
 }
 
 .button-secondary {
   background: transparent;
-  color: #888;
-  border: 1px solid #3a3a3a;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .button-secondary:hover {
-  background: #333;
-  color: #e0e0e0;
-  border-color: #4a4a4a;
+  background: rgba(255, 122, 89, 0.12);
+  color: var(--color-accent-strong);
+  border-color: var(--color-border-strong);
 }
 
 .export-options {
@@ -230,6 +236,8 @@
   font-weight: 500;
   color: #e0e0e0;
 }
+
+
 
 
 

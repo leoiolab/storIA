@@ -3,13 +3,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #1a1a1a;
+  background: var(--color-surface);
 }
 
 .chapter-editor .editor-header {
   padding: 24px 32px;
-  border-bottom: 1px solid #3a3a3a;
-  background: #232323;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+  box-shadow: var(--shadow-soft);
 }
 
 .chapter-title-input {
@@ -17,7 +18,7 @@
   padding: 8px 0;
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--color-text-heading);
   font-size: 28px;
   font-weight: 700;
   margin-bottom: 12px;
@@ -28,7 +29,7 @@
 }
 
 .chapter-title-input::placeholder {
-  color: #555;
+  color: var(--color-text-muted);
 }
 
 .chapter-stats {
@@ -36,21 +37,22 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 .stat-item {
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 .stat-divider {
-  color: #555;
+  color: var(--color-text-muted);
 }
 
 .chapter-editor .editor-content {
   flex: 1;
   overflow: hidden;
   padding: 32px;
+  background: var(--color-surface);
 }
 
 .chapter-content-textarea {
@@ -58,7 +60,7 @@
   height: 100%;
   background: transparent;
   border: none;
-  color: #e0e0e0;
+  color: var(--color-text-primary);
   font-size: 16px;
   line-height: 1.8;
   resize: none;
@@ -72,8 +74,10 @@
 }
 
 .chapter-content-textarea::placeholder {
-  color: #555;
+  color: var(--color-text-muted);
 }
+
+
 
 
 

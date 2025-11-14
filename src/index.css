@@ -4,14 +4,37 @@
   box-sizing: border-box;
 }
 
+:root {
+  --color-bg: #fff7ef;
+  --color-surface: #ffffff;
+  --color-surface-soft: #fff1e4;
+  --color-surface-alt: #ffe4d1;
+  --color-border: #f3d6c3;
+  --color-border-strong: #e1b497;
+  --color-text-primary: #3b241a;
+  --color-text-heading: #2a140d;
+  --color-text-secondary: #7d5a4b;
+  --color-text-muted: #b28f80;
+  --color-accent: #ff7a59;
+  --color-accent-strong: #f25f4c;
+  --color-accent-soft: #ffd0ba;
+  --color-highlight: #ffb703;
+  --color-sidebar: #ffe9d6;
+  --color-scroll-track: #ffead6;
+  --color-scroll-thumb: #e8bfa5;
+  --color-scroll-thumb-hover: #d3a084;
+  --shadow-soft: 0 12px 30px rgba(223, 177, 140, 0.25);
+  --shadow-card: 0 10px 24px rgba(222, 170, 135, 0.25);
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #1a1a1a;
-  color: #e0e0e0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
   overflow: hidden;
 }
 
@@ -26,16 +49,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #2a2a2a;
+  background: var(--color-scroll-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
+  background: var(--color-scroll-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #5a5a5a;
+  background: var(--color-scroll-thumb-hover);
 }
 
 button {
@@ -47,19 +70,19 @@ input, textarea {
   font-family: inherit;
 }
 
-/* Selection colors */
 ::selection {
-  background: #007aff;
-  color: white;
+  background: var(--color-accent);
+  color: #ffffff;
 }
 
-/* Focus outlines */
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #007aff;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+
 
 
 
