@@ -14,25 +14,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.sidebar-logo-image {
-  width: 58px;
-  height: auto;
-  flex-shrink: 0;
-  filter: drop-shadow(0 8px 16px rgba(29, 42, 92, 0.2));
-}
-
-.sidebar-brand {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .sidebar-title {
   font-size: 24px;
   font-weight: 700;

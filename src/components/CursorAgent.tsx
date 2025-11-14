@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen } from 'lucide-react';
 import { Book, Character, Chapter } from '../types';
+import type { View } from './Sidebar';
 import { chatWithAI, isAIConfigured } from '../services/ai';
 import './CursorAgent.css';
 
@@ -20,37 +21,85 @@ export interface AgentMessage {
   }>;
 }
 
-const buildContextSummary = (book: Book, currentChapter?: Chapter | null, currentCharacter?: Character | null) => {
-  let summary = `Book: "${book.metadata.title}" by ${book.metadata.author}`;
+const buildContextSummary = (
+  book: Book,
+  activeView: View,
+  currentChapter?: Chapter | null,
+  currentCharacter?: Character | null
+) => {
+  const sections: string[] = [];
+
+  sections.push(`Book: "${book.metadata.title}" by ${book.metadata.author || 'Unknown author'}`);
 
   if (book.metadata.synopsis) {
-    summary += `\nSynopsis: ${book.metadata.synopsis}`;
+    sections.push(`Synopsis: ${book.metadata.synopsis}`);
+  }
+
+  if (activeView === 'metadata') {
+    sections.push('User is editing the book metadata (title, author, genre, synopsis, targets). Focus suggestions on overall story planning.');
   }
 
   if (currentChapter) {
-    summary += `\n\nCurrent Chapter: "${currentChapter.title}"`;
+    const chapterSection: string[] = [
+      `Focused Chapter: "${currentChapter.title}" (order ${currentChapter.order + 1})`
+    ];
     if (currentChapter.synopsis) {
-      summary += `\nChapter Synopsis: ${currentChapter.synopsis}`;
+      chapterSection.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
     }
+    if (currentChapter.notes) {
+      chapterSection.push(`Author Notes: ${currentChapter.notes}`);
+    }
+    sections.push(chapterSection.join('\n'));
+  } else if (activeView === 'chapters' && book.chapters.length) {
+    const preview = book.chapters
+      .slice(0, 5)
+      .map(chapter => `"${chapter.title}"`)
+      .join(', ');
+    sections.push(`User is browsing chapters. Current roster: ${preview}${book.chapters.length > 5 ? ', ...' : ''}`);
   }
 
   if (currentCharacter) {
-    summary += `\n\nCurrent Character: ${currentCharacter.name} (${currentCharacter.type})`;
-    if (currentCharacter.quickDescription) {
-      summary += `\nDescription: ${currentCharacter.quickDescription}`;
-    }
+    const arcSnippet = currentCharacter.characterArc ? `\nCharacter Arc: ${currentCharacter.characterArc}` : '';
+    sections.push(
+      [
+        `Focused Character: ${currentCharacter.name} (${currentCharacter.type})`,
+        currentCharacter.description ? `Description: ${currentCharacter.description}` : null,
+        arcSnippet || null,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    );
+  } else if (activeView === 'characters' && book.characters.length) {
+    const listPreview = book.characters
+      .slice(0, 6)
+      .map(char => `${char.name} (${char.type})`)
+      .join(', ');
+    sections.push(`User is reviewing the character roster. Characters available: ${listPreview}${book.characters.length > 6 ? ', ...' : ''}`);
+  }
+
+  if (activeView === 'relationships') {
+    sections.push('User is analysing relationships between characters. Highlight connections and dynamics.');
+  }
+
+  if (activeView === 'storyarc') {
+    sections.push('User is working on the story arc. Provide structural guidance across beginning, middle, and end.');
+  }
+
+  if (activeView === 'reader') {
+    sections.push('User is in reader mode, focusing on narrative flow and pacing.');
   }
 
   const mainCharacters = book.characters.filter(c => c.type === 'main').map(c => c.name);
   if (mainCharacters.length > 0) {
-    summary += `\n\nMain Characters: ${mainCharacters.join(', ')}`;
+    sections.push(`Main Characters: ${mainCharacters.join(', ')}`);
   }
 
-  return summary;
+  return sections.join('\n\n');
 };
 
 interface CursorAgentProps {
   book: Book;
+  activeView: View;
   currentChapter?: Chapter | null;
   currentCharacter?: Character | null;
   messages: AgentMessage[];
@@ -65,6 +114,7 @@ interface CursorAgentProps {
 
 function CursorAgent({
   book,
+  activeView,
   currentChapter,
   currentCharacter,
   messages,
@@ -103,8 +153,8 @@ function CursorAgent({
   }, [input]);
 
   const contextSummary = useMemo(
-    () => buildContextSummary(book, currentChapter, currentCharacter),
-    [book, currentChapter, currentCharacter]
+    () => buildContextSummary(book, activeView, currentChapter, currentCharacter),
+    [book, activeView, currentChapter, currentCharacter]
   );
 
   const handleSend = async () => {

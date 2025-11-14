@@ -7,6 +7,7 @@ export interface ICharacter extends Document {
   type: 'main' | 'secondary' | 'tertiary';
   quickDescription: string;
   fullBio: string;
+  characterArc?: string;
   age?: string;
   role?: string;
   relationships?: Array<{
@@ -46,6 +47,10 @@ const characterSchema = new Schema<ICharacter>({
     default: ''
   },
   fullBio: {
+    type: String,
+    default: ''
+  },
+  characterArc: {
     type: String,
     default: ''
   },

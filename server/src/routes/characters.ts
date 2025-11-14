@@ -51,6 +51,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       type: req.body.type,
       quickDescription: req.body.quickDescription || '',
       fullBio: req.body.fullBio || '',
+      characterArc: req.body.characterArc || '',
       age: req.body.age,
       role: req.body.role,
       relationships: req.body.relationships || []
@@ -74,9 +75,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         type: req.body.type,
         quickDescription: req.body.quickDescription,
         fullBio: req.body.fullBio,
+        characterArc: req.body.characterArc,
         age: req.body.age,
         role: req.body.role,
-        relationships: req.body.relationships
+        relationships: req.body.relationships || []
       },
       { new: true, runValidators: true }
     );

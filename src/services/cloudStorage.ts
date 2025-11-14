@@ -185,6 +185,7 @@ export class CloudStorageService {
         type: character.type,
         quickDescription: character.description,
         fullBio: character.biography,
+        characterArc: character.characterArc,
         age: character.age,
         role: character.role,
         relationships: character.relationships?.map(rel => ({
@@ -206,6 +207,7 @@ export class CloudStorageService {
         type: character.type,
         quickDescription: character.description,
         fullBio: character.biography,
+        characterArc: character.characterArc,
         age: character.age,
         role: character.role,
         relationships: character.relationships?.map(rel => ({
@@ -317,6 +319,7 @@ export class CloudStorageService {
       type: char.type,
       description: char.quickDescription || char.description || '',
       biography: char.fullBio || char.biography || '',
+      characterArc: char.characterArc || '',
       age: char.age,
       role: char.role,
       relationships: (char.relationships || []).map((rel: any) => ({

@@ -621,6 +621,7 @@ function App() {
       {currentBook && (
         <CursorAgent
           book={currentBook}
+          activeView={view}
           currentChapter={selectedChapter}
           currentCharacter={selectedCharacter}
           messages={agentMessages}
