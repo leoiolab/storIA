@@ -185,6 +185,15 @@ export class CloudStorageService {
   }
 
   static async createCharacter(projectId: string, character: Omit<Character, 'id'>): Promise<Character> {
+    // Ensure relationships is properly formatted as an array
+    const relationships = character.relationships 
+      ? character.relationships.map(rel => ({
+          characterId: rel.targetCharacterId,
+          type: rel.relationshipType,
+          description: rel.description || '',
+        }))
+      : [];
+
     const created = await this.request('/characters', {
       method: 'POST',
       body: JSON.stringify({
@@ -196,11 +205,7 @@ export class CloudStorageService {
         characterArc: character.characterArc,
         age: character.age,
         role: character.role,
-        relationships: character.relationships?.map(rel => ({
-          characterId: rel.targetCharacterId,
-          type: rel.relationshipType,
-          description: rel.description,
-        })) || []
+        relationships: relationships
       }),
     });
 
@@ -208,6 +213,15 @@ export class CloudStorageService {
   }
 
   static async updateCharacter(id: string, character: Partial<Character>): Promise<Character> {
+    // Ensure relationships is properly formatted as an array
+    const relationships = character.relationships 
+      ? character.relationships.map(rel => ({
+          characterId: rel.targetCharacterId,
+          type: rel.relationshipType,
+          description: rel.description || '',
+        }))
+      : [];
+
     const updated = await this.request(`/characters/${id}`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -218,11 +232,7 @@ export class CloudStorageService {
         characterArc: character.characterArc,
         age: character.age,
         role: character.role,
-        relationships: character.relationships?.map(rel => ({
-          characterId: rel.targetCharacterId,
-          type: rel.relationshipType,
-          description: rel.description,
-        }))
+        relationships: relationships
       }),
     });
 

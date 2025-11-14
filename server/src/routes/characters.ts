@@ -96,6 +96,21 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     const userObjectId = new Types.ObjectId(req.userId);
     const projectObjectId = new Types.ObjectId(req.body.projectId);
 
+    // Parse relationships if it's a string (legacy data or serialization issue)
+    let relationships = req.body.relationships || [];
+    if (typeof relationships === 'string') {
+      try {
+        relationships = JSON.parse(relationships);
+      } catch (e) {
+        console.error('Failed to parse relationships string:', e);
+        relationships = [];
+      }
+    }
+    // Ensure relationships is an array
+    if (!Array.isArray(relationships)) {
+      relationships = [];
+    }
+
     const character = new Character({
       projectId: projectObjectId,
       userId: userObjectId,
@@ -106,7 +121,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       characterArc: req.body.characterArc || '',
       age: req.body.age,
       role: req.body.role,
-      relationships: req.body.relationships || []
+      relationships: relationships
     });
     
     await character.save();
@@ -140,6 +155,21 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       ]
     };
 
+    // Parse relationships if it's a string (legacy data or serialization issue)
+    let relationships = req.body.relationships || [];
+    if (typeof relationships === 'string') {
+      try {
+        relationships = JSON.parse(relationships);
+      } catch (e) {
+        console.error('Failed to parse relationships string:', e);
+        relationships = [];
+      }
+    }
+    // Ensure relationships is an array
+    if (!Array.isArray(relationships)) {
+      relationships = [];
+    }
+
     const updateData: Record<string, any> = {
       name: req.body.name,
       type: req.body.type,
@@ -148,7 +178,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       characterArc: req.body.characterArc || '',
       age: req.body.age,
       role: req.body.role,
-      relationships: req.body.relationships || [],
+      relationships: relationships,
       userId: userObjectId // Ensure userId is set
     };
 
