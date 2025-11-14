@@ -67,9 +67,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         let toParse = req.body.relationships.trim();
         console.log('=== MIDDLEWARE: Fixing relationships string ===');
         console.log('Middleware: Original string (first 300 chars):', toParse.substring(0, 300));
+        console.log('Middleware: String length:', toParse.length);
         
         // Handle JavaScript code format first (has string concatenation like "[\n' + '  {\n' +")
-        if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n") || toParse.includes('\n')) {
+        if (toParse.includes("' +") || toParse.includes('" +') || toParse.includes("\\n") || (toParse.includes('\n') && toParse.includes("' +"))) {
           console.log('Middleware: Detected JavaScript code format with concatenation');
           // Remove all string concatenation operators
           toParse = toParse
@@ -92,28 +93,78 @@ app.use((req: Request, res: Response, next: NextFunction) => {
           toParse = toParse.replace(/'/g, '"');
           console.log('Middleware: After cleaning (first 200 chars):', toParse.substring(0, 200));
         } else if (toParse.includes("'")) {
-          // Handle single quotes (convert to double quotes)
+          // Handle single quotes (convert to double quotes) - this is the most common case
           console.log('Middleware: Detected single quotes, converting to double quotes');
+          // Simple replacement - convert all single quotes to double quotes
           toParse = toParse.replace(/'/g, '"');
+          console.log('Middleware: After quote conversion (first 200 chars):', toParse.substring(0, 200));
         }
         
-        // Try to parse
+        // Try to parse - be more lenient
         if (toParse.startsWith('[') && toParse.endsWith(']')) {
-          const parsed = JSON.parse(toParse);
-          if (Array.isArray(parsed)) {
-            req.body.relationships = parsed;
-            console.log('Middleware: ✅ Successfully fixed relationships from string to array, got', parsed.length, 'items');
-            console.log('Middleware: Sample item:', JSON.stringify(parsed[0]));
-          } else {
-            console.error('Middleware: ❌ Parsed result is not an array:', typeof parsed, parsed);
+          try {
+            const parsed = JSON.parse(toParse);
+            if (Array.isArray(parsed)) {
+              req.body.relationships = parsed;
+              console.log('Middleware: ✅ Successfully fixed relationships from string to array, got', parsed.length, 'items');
+              if (parsed.length > 0) {
+                console.log('Middleware: Sample item:', JSON.stringify(parsed[0]));
+              }
+            } else {
+              console.error('Middleware: ❌ Parsed result is not an array:', typeof parsed, parsed);
+              // Force it to be an array anyway
+              req.body.relationships = [];
+            }
+          } catch (parseErr: any) {
+            console.error('Middleware: ❌ JSON.parse failed:', parseErr?.message);
+            console.error('Middleware: String that failed to parse (first 300 chars):', toParse.substring(0, 300));
+            // Try one more time with even more aggressive cleaning
+            try {
+              // Remove any non-JSON characters
+              let ultraCleaned = toParse
+                .replace(/[^\x20-\x7E\[\]{}:,"]/g, '') // Remove non-printable chars except JSON structure
+                .replace(/'/g, '"'); // One more quote conversion
+              const ultraParsed = JSON.parse(ultraCleaned);
+              if (Array.isArray(ultraParsed)) {
+                req.body.relationships = ultraParsed;
+                console.log('Middleware: ✅ Successfully fixed with ultra-cleaning, got', ultraParsed.length, 'items');
+              } else {
+                req.body.relationships = [];
+              }
+            } catch (ultraErr: any) {
+              console.error('Middleware: ❌ Ultra-cleaning also failed:', ultraErr?.message);
+              req.body.relationships = [];
+            }
           }
         } else {
           console.error('Middleware: ❌ String does not look like an array after cleaning');
           console.error('Middleware: Cleaned string (first 200 chars):', toParse.substring(0, 200));
+          console.error('Middleware: Starts with [:', toParse.startsWith('['), 'Ends with ]:', toParse.endsWith(']'));
+          // Try to find and extract array anyway
+          const arrayStart = toParse.indexOf('[');
+          const arrayEnd = toParse.lastIndexOf(']');
+          if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+            const extracted = toParse.substring(arrayStart, arrayEnd + 1);
+            try {
+              const extractedParsed = JSON.parse(extracted);
+              if (Array.isArray(extractedParsed)) {
+                req.body.relationships = extractedParsed;
+                console.log('Middleware: ✅ Successfully extracted and parsed array');
+              } else {
+                req.body.relationships = [];
+              }
+            } catch (extractErr: any) {
+              console.error('Middleware: ❌ Extraction parse failed:', extractErr?.message);
+              req.body.relationships = [];
+            }
+          } else {
+            req.body.relationships = [];
+          }
         }
       } catch (e: any) {
         console.error('Middleware: ❌ Failed to parse relationships:', e?.message);
         console.error('Middleware: Error stack:', e?.stack);
+        req.body.relationships = [];
       }
     } else if (req.body && req.body.relationships) {
       console.log('Middleware: relationships is not a string, type:', typeof req.body.relationships, 'isArray:', Array.isArray(req.body.relationships));
