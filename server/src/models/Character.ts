@@ -60,11 +60,55 @@ const characterSchema = new Schema<ICharacter>({
   role: {
     type: String
   },
-  relationships: [{
-    characterId: String,
-    type: String,
-    description: String
-  }]
+  relationships: {
+    type: [{
+      characterId: String,
+      type: String,
+      description: String
+    }],
+    set: function(relationships: any) {
+      // If relationships is a string, parse it
+      if (typeof relationships === 'string') {
+        try {
+          let toParse = relationships.trim();
+          // Handle single quotes
+          if (toParse.includes("'")) {
+            toParse = toParse.replace(/'/g, '"');
+          }
+          // Handle JavaScript code format
+          if (toParse.includes("' +") || toParse.includes("\\n")) {
+            toParse = toParse
+              .replace(/' \+/g, '')
+              .replace(/" \+/g, '')
+              .replace(/\\n/g, '')
+              .replace(/\n/g, '')
+              .replace(/'/g, '"');
+            const arrayStart = toParse.indexOf('[');
+            const arrayEnd = toParse.lastIndexOf(']');
+            if (arrayStart !== -1 && arrayEnd !== -1) {
+              toParse = toParse.substring(arrayStart, arrayEnd + 1);
+            }
+          }
+          if (toParse.startsWith('[') && toParse.endsWith(']')) {
+            const parsed = JSON.parse(toParse);
+            if (Array.isArray(parsed)) {
+              console.log('Mongoose setter: Fixed relationships from string to array');
+              return parsed;
+            }
+          }
+        } catch (e: any) {
+          console.error('Mongoose setter: Failed to parse relationships:', e?.message);
+        }
+        return [];
+      }
+      // If it's already an array, return it
+      if (Array.isArray(relationships)) {
+        return relationships;
+      }
+      // Otherwise, return empty array
+      return [];
+    }
+  }
 }, {
   timestamps: true
 });
