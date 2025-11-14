@@ -212,8 +212,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     
     // Validate and clean relationships array - ensure all fields are strings
     relationships = relationships
-      .filter(rel => rel && typeof rel === 'object')
-      .map(rel => ({
+      .filter((rel: any) => rel && typeof rel === 'object')
+      .map((rel: any) => ({
         characterId: String(rel.characterId || ''),
         type: String(rel.type || ''),
         description: String(rel.description || '')
