@@ -155,6 +155,17 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       ]
     };
 
+    // Log the raw request body to see what Express received
+    console.log('=== RAW REQUEST BODY ===');
+    console.log('req.body type:', typeof req.body);
+    console.log('req.body.relationships type:', typeof req.body.relationships);
+    console.log('req.body.relationships value:', req.body.relationships);
+    console.log('req.body.relationships constructor:', req.body.relationships?.constructor?.name);
+    if (typeof req.body.relationships === 'string') {
+      console.log('req.body.relationships string length:', req.body.relationships.length);
+      console.log('req.body.relationships first 100 chars:', req.body.relationships.substring(0, 100));
+    }
+
     // Parse relationships if it's a string (legacy data or serialization issue)
     let relationships = req.body.relationships;
     
