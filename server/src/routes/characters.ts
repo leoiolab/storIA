@@ -167,12 +167,20 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     // Parse relationships if it's a string (legacy data or serialization issue)
+    // NOTE: Middleware should have fixed this, but we check again here as a safety net
     let relationships = req.body.relationships;
     
     // Debug logging
+    console.log('=== ROUTE HANDLER: Checking relationships ===');
     console.log('Update character - relationships type:', typeof relationships);
-    console.log('Update character - relationships value:', relationships);
+    console.log('Update character - relationships isArray:', Array.isArray(relationships));
     console.log('Update character - relationships constructor:', relationships?.constructor?.name);
+    if (typeof relationships === 'string') {
+      console.log('⚠️ ROUTE HANDLER: relationships is STILL a string! Middleware may have failed.');
+      console.log('String value (first 300 chars):', relationships.substring(0, 300));
+    } else {
+      console.log('✅ ROUTE HANDLER: relationships is not a string');
+    }
     
     // Handle different input types
     if (relationships === undefined || relationships === null) {
