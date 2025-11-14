@@ -1,5 +1,6 @@
 import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut } from 'lucide-react';
 import { ReactNode } from 'react';
+import logoSrc from '../assets/storia-logo.svg';
 import './Sidebar.css';
 
 export type View = 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'reader';
@@ -24,11 +25,16 @@ function Sidebar({ view, onViewChange, children, onLogout, userName }: SidebarPr
 
   return (
     <div className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="sidebar-title">StorIA</h1>
-          <p className="sidebar-subtitle">AI Story Creation</p>
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <img src={logoSrc} alt="StorIA logo" className="sidebar-logo-image" />
+          <div className="sidebar-brand">
+            <h1 className="sidebar-title">StorIA</h1>
+            <p className="sidebar-subtitle">AI Story Creation</p>
+          </div>
         </div>
-      
+      </div>
+
       {children}
       
       <nav className="sidebar-nav">

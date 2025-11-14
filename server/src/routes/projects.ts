@@ -10,7 +10,27 @@ router.use(authenticateToken);
 // Get all projects for user
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const projects = await Project.find({ userId: req.userId }).sort({ updatedAt: -1 });
+    const legacyFilter = {
+      $or: [
+        { userId: req.userId },
+        { userId: { $exists: false } },
+        { userId: null }
+      ]
+    };
+
+    const projects = await Project.find(legacyFilter).sort({ updatedAt: -1 });
+    const legacyIds = projects.filter(project => !project.userId).map(project => project._id);
+
+    if (legacyIds.length > 0) {
+      await Project.updateMany(
+        { _id: { $in: legacyIds } },
+        { $set: { userId: req.userId } }
+      );
+
+      const refreshed = await Project.find({ userId: req.userId }).sort({ updatedAt: -1 });
+      return res.json(refreshed);
+    }
+
     res.json(projects);
   } catch (error) {
     console.error('Get projects error:', error);
@@ -21,15 +41,26 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Get single project
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const project = await Project.findOne({ 
-      _id: req.params.id, 
-      userId: req.userId 
-    });
-    
+    const legacyFilter = {
+      _id: req.params.id,
+      $or: [
+        { userId: req.userId },
+        { userId: { $exists: false } },
+        { userId: null }
+      ]
+    };
+
+    const project = await Project.findOne(legacyFilter);
+
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
+
+    if (!project.userId) {
+      project.userId = req.userId!;
+      await project.save();
+    }
+
     res.json(project);
   } catch (error) {
     console.error('Get project error:', error);
@@ -80,9 +111,18 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       updateData.settings = req.body.settings;
     }
 
+    const legacyFilter = {
+      _id: req.params.id,
+      $or: [
+        { userId: req.userId },
+        { userId: { $exists: false } },
+        { userId: null }
+      ]
+    };
+
     const project = await Project.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      { $set: updateData },
+      legacyFilter,
+      { $set: { ...updateData, userId: req.userId } },
       { new: true, runValidators: true }
     );
     
@@ -100,16 +140,20 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Delete project
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const project = await Project.findOneAndDelete({ 
-      _id: req.params.id, 
-      userId: req.userId 
-    });
+    const legacyFilter = {
+      _id: req.params.id,
+      $or: [
+        { userId: req.userId },
+        { userId: { $exists: false } },
+        { userId: null }
+      ]
+    };
+
+    const project = await Project.findOneAndDelete(legacyFilter);
     
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
-    // TODO: Also delete related characters and chapters
     
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {

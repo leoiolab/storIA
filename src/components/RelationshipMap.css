@@ -330,9 +330,10 @@
 .no-relationships {
   margin-top: 32px;
   padding: 32px;
-  background: #232323;
-  border: 1px solid #3a3a3a;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
+  box-shadow: var(--shadow-card);
 }
 
 .no-relationships-content {
@@ -340,21 +341,21 @@
 }
 
 .no-relationships-icon {
-  color: #888;
+  color: var(--color-accent-strong);
   margin-bottom: 16px;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .no-relationships h4 {
   font-size: 18px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text-heading);
   margin: 0 0 8px 0;
 }
 
 .no-relationships p {
   font-size: 14px;
-  color: #888;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   margin-bottom: 16px;
 }
@@ -365,15 +366,16 @@
 
 .tip {
   padding: 12px 16px;
-  background: #1a1a1a;
-  border: 1px solid #3a3a3a;
-  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   font-size: 13px;
-  color: #b0b0b0;
+  color: var(--color-text-secondary);
   line-height: 1.4;
+  box-shadow: 0 8px 18px rgba(223, 177, 140, 0.15);
 }
 
 .tip strong {
-  color: #007aff;
+  color: var(--color-accent-strong);
 }
 

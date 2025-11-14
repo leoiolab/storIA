@@ -211,3 +211,5 @@ The app now logs detailed information:
 No more lost work, no more starting over - just focus on writing while the app takes care of saving everything automatically.
 
 
+
+

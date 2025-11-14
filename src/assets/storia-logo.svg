@@ -1,0 +1,12 @@
+<svg width="160" height="80" viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>StorIA logo</title>
+  <g stroke="#1d2a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M42 57c0 8.284-8.059 15-18 15s-18-6.716-18-15 8.059-15 18-15 18 6.716 18 15z" fill="#fef7ec"/>
+    <path d="M16 38c0-7 5-12 11-12s11 5 11 12"/>
+    <path d="M27 26c5-9 13-16 26-23"/>
+    <path d="M56 3c-5 10-7 18-5 24 2.5 7.5 10 9 13 9"/>
+  </g>
+  <path d="M62 60h56" stroke="#f7a32b" stroke-width="4" stroke-linecap="round"/>
+  <text x="60" y="44" font-family="'Inter', 'Segoe UI', sans-serif" font-size="28" font-weight="600" fill="#1d2a5c">Stor</text>
+  <text x="110" y="44" font-family="'Inter', 'Segoe UI', sans-serif" font-size="28" font-weight="700" fill="#f7a32b">IA</text>
+</svg>

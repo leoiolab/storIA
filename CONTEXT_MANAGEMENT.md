@@ -235,3 +235,5 @@ The AI Chat now uses context management:
 It's like having a professional editor watching over your shoulder, catching inconsistencies before they become problems.
 
 
+
+
