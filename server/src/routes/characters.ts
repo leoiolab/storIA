@@ -233,6 +233,19 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         description: String(rel.description || '')
       }));
 
+    // Final validation - ensure it's definitely an array
+    if (!Array.isArray(relationships)) {
+      console.error('CRITICAL: Relationships is still not an array after all parsing!', typeof relationships, relationships);
+      relationships = [];
+    }
+
+    console.log('Final relationships before save:', {
+      type: typeof relationships,
+      isArray: Array.isArray(relationships),
+      length: relationships.length,
+      sample: relationships[0]
+    });
+
     const updateData: Record<string, any> = {
       name: req.body.name,
       type: req.body.type,
@@ -241,9 +254,20 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       characterArc: req.body.characterArc || '',
       age: req.body.age,
       role: req.body.role,
-      relationships: relationships,
+      relationships: relationships, // This MUST be an array, not a string
       userId: userObjectId // Ensure userId is set
     };
+
+    // Double-check updateData.relationships is an array
+    if (typeof updateData.relationships === 'string') {
+      console.error('CRITICAL: updateData.relationships is a string! Attempting to parse again...');
+      try {
+        updateData.relationships = JSON.parse(updateData.relationships);
+      } catch (e) {
+        console.error('Failed to parse updateData.relationships:', e);
+        updateData.relationships = [];
+      }
+    }
 
     const character = await Character.findOneAndUpdate(
       legacyFilter,
