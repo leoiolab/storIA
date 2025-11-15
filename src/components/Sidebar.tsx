@@ -25,8 +25,18 @@ function Sidebar({ view, onViewChange, children, onLogout, userName }: SidebarPr
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1 className="sidebar-title">StorIA</h1>
-        <p className="sidebar-subtitle">AI Story Creation</p>
+        <div className="sidebar-header-top">
+          <div>
+            <h1 className="sidebar-title">StorIA</h1>
+            <p className="sidebar-subtitle">AI Story Creation</p>
+          </div>
+          {onLogout && (
+            <button className="logout-button mobile-top" onClick={onLogout} title="Log out">
+              <LogOut size={18} />
+              <span className="logout-text">Log out</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {children}

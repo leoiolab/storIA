@@ -395,66 +395,110 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
       data: any;
     }> = [];
 
-    // Try to extract JSON character data
-    const jsonMatch = response.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
-      try {
-        const characterData = JSON.parse(jsonMatch[1]);
-        console.log('Parsed character data from AI:', characterData);
-        
-        // Normalize field names
-        const normalizedData = {
-          name: characterData.name,
-          type: characterData.type || 'secondary',
-          quickDescription: characterData.quickDescription || characterData.description || '',
-          fullBio: characterData.fullBio || characterData.biography || characterData.bio || '',
-          age: characterData.age,
-          role: characterData.role,
-        };
-        
-        console.log('Normalized character data:', normalizedData);
-        
-        if (normalizedData.name) {
-          // Determine if this is a new character or an update
-          const isUpdateRequest = userPrompt.toLowerCase().includes('update') || 
-                                userPrompt.toLowerCase().includes('minor update') ||
-                                userPrompt.toLowerCase().includes('major update') ||
-                                userPrompt.toLowerCase().includes('improve') ||
-                                userPrompt.toLowerCase().includes('refine') ||
-                                userPrompt.toLowerCase().includes('enhance');
-          
-          const isNewCharacterRequest = (userPrompt.toLowerCase().includes('create') || 
-                                      userPrompt.toLowerCase().includes('new') ||
-                                      userPrompt.toLowerCase().includes('add') ||
-                                      userPrompt.toLowerCase().includes('make')) && 
-                                      !isUpdateRequest;
-          
-          // If we have a current character and it's not explicitly a new character request, it's an update
-          const shouldUpdate = (currentCharacter && !isNewCharacterRequest) || isUpdateRequest;
-          
-          console.log('Action detection:', { isUpdateRequest, isNewCharacterRequest, shouldUpdate, hasCurrentCharacter: !!currentCharacter });
-          
-          actions.push({
-            type: shouldUpdate ? 'update-character' : 'create-character',
-            label: shouldUpdate ? '📝 Update Character' : '✨ Create Character',
-            data: normalizedData
-          });
+    // Try to extract JSON character data - be more flexible with JSON matching
+    const jsonPatterns = [
+      /```json\s*(\{[\s\S]*?\})\s*```/,
+      /```\s*(\{[\s\S]*?\})\s*```/,
+      /\{[\s\S]*?"name"[\s\S]*?\}/  // Fallback: look for any JSON object with "name"
+    ];
+    
+    let characterData = null;
+    for (const pattern of jsonPatterns) {
+      const match = response.match(pattern);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[1] || match[0]);
+          if (parsed && typeof parsed === 'object' && parsed.name) {
+            characterData = parsed;
+            break;
+          }
+        } catch (e) {
+          // Try next pattern
+          continue;
         }
-      } catch (e) {
-        console.error('Failed to parse JSON:', e);
+      }
+    }
+    
+    if (characterData) {
+      console.log('Parsed character data from AI:', characterData);
+      
+      // Normalize field names
+      const normalizedData = {
+        name: characterData.name,
+        type: characterData.type || 'secondary',
+        quickDescription: characterData.quickDescription || characterData.description || '',
+        fullBio: characterData.fullBio || characterData.biography || characterData.bio || '',
+        age: characterData.age,
+        role: characterData.role,
+        characterArc: characterData.characterArc || '',
+      };
+      
+      console.log('Normalized character data:', normalizedData);
+      
+      if (normalizedData.name) {
+        // Determine if this is a new character or an update - be more lenient
+        const promptLower = userPrompt.toLowerCase();
+        const isUpdateRequest = /update|improve|refine|enhance|modify|edit|change|revise|adjust/i.test(promptLower);
+        
+        const isNewCharacterRequest = /create|new character|add character|make.*character/i.test(promptLower) && !isUpdateRequest;
+        
+        // If we have a current character and it's not explicitly a new character request, it's an update
+        const shouldUpdate = (currentCharacter && !isNewCharacterRequest) || isUpdateRequest;
+        
+        console.log('Action detection:', { isUpdateRequest, isNewCharacterRequest, shouldUpdate, hasCurrentCharacter: !!currentCharacter });
+        
+        actions.push({
+          type: shouldUpdate ? 'update-character' : 'create-character',
+          label: shouldUpdate ? '📝 Update Character' : '✨ Create Character',
+          data: normalizedData
+        });
       }
     }
 
-    // Check if response contains chapter updates (minor/major)
-    const isChapterUpdate = /minor update|major update/i.test(userPrompt);
+    // Check if response contains chapter updates (minor/major) - be more flexible
+    const isChapterUpdate = /minor update|major update|improve.*chapter|enhance.*chapter|refine.*chapter/i.test(userPrompt);
     if (isChapterUpdate && currentChapter) {
       // For chapter updates, extract the improved content
-      // Look for code blocks or substantial text
-      const codeBlockMatch = response.match(/```(?:markdown|text)?\s*([\s\S]+?)\s*```/);
-      const improvedContent = codeBlockMatch ? codeBlockMatch[1].trim() : null;
+      // Look for code blocks or substantial text - try multiple patterns
+      const codeBlockPatterns = [
+        /```(?:markdown|text)?\s*([\s\S]+?)\s*```/,
+        /```\s*([\s\S]+?)\s*```/,
+      ];
       
-      if (improvedContent && improvedContent.length > 100) {
-        const isMinor = /minor update/i.test(userPrompt);
+      let improvedContent = null;
+      for (const pattern of codeBlockPatterns) {
+        const match = response.match(pattern);
+        if (match && match[1]) {
+          const content = match[1].trim();
+          if (content.length > 100) {
+            improvedContent = content;
+            break;
+          }
+        }
+      }
+      
+      // If no code block, try to extract the main content after explanations
+      if (!improvedContent) {
+        const contentMatch = response.match(/(?:Here(?:'s| is)|Updated|Improved|Revised)[\s\S]*?:\s*([\s\S]+?)(?:\n\n(?:Would you|Let me|What do|Is there)|$)/i);
+        if (contentMatch && contentMatch[1] && contentMatch[1].trim().length > 100) {
+          improvedContent = contentMatch[1].trim();
+        }
+      }
+      
+      // Last resort: use the full response if it's substantial
+      if (!improvedContent && response.length > 200 && !response.includes('```json')) {
+        // Remove common AI explanations
+        const cleaned = response
+          .replace(/^(Here's|Here is|Updated|Improved|Revised)[\s\S]*?:\s*/i, '')
+          .replace(/\n\n(Would you|Let me|What do|Is there)[\s\S]*$/i, '')
+          .trim();
+        if (cleaned.length > 100) {
+          improvedContent = cleaned;
+        }
+      }
+      
+      if (improvedContent) {
+        const isMinor = /minor/i.test(userPrompt);
         actions.push({
           type: 'update-chapter',
           label: isMinor ? '🔧 Apply Minor Updates' : '🔨 Apply Major Updates',
@@ -463,14 +507,41 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
       }
     }
     
-    // Check if response contains story content to insert
-    const hasContent = /write|continue|generate.*content|next paragraph/i.test(userPrompt);
+    // Check if response contains story content to insert - be more lenient
+    const hasContent = /write|continue|generate.*content|next paragraph|insert|add.*text|story|dialogue|scene/i.test(userPrompt);
     if (hasContent && currentChapter && !isChapterUpdate) {
-      // Extract clean content (remove explanations)
-      const contentMatch = response.match(/(?:Here(?:'s| is)|^)([\s\S]+?)(?:\n\n(?:Would you like|Let me know|What do you think)|$)/i);
-      const content = contentMatch ? contentMatch[1].trim() : response;
+      // Extract clean content (remove explanations) - try multiple patterns
+      const contentPatterns = [
+        /(?:Here(?:'s| is)|^)([\s\S]+?)(?:\n\n(?:Would you like|Let me know|What do you think|Is there anything|Would you want)|$)/i,
+        /```(?:markdown|text)?\s*([\s\S]+?)\s*```/,
+        /^([\s\S]+?)(?:\n\n(?:Would you|Let me|What do|Is there|I hope|Enjoy)[\s\S]*$)/i,
+      ];
       
-      if (content.length > 50 && !content.includes('```json')) {
+      let content = null;
+      for (const pattern of contentPatterns) {
+        const match = response.match(pattern);
+        if (match && match[1]) {
+          const extracted = match[1].trim();
+          if (extracted.length > 50 && !extracted.includes('```json')) {
+            content = extracted;
+            break;
+          }
+        }
+      }
+      
+      // Fallback: use response if it's substantial and doesn't look like JSON
+      if (!content && response.length > 100 && !response.includes('```json') && !response.match(/^\s*\{/)) {
+        // Remove common AI explanations
+        const cleaned = response
+          .replace(/^(Here's|Here is|I've|I have)[\s\S]*?:\s*/i, '')
+          .replace(/\n\n(Would you|Let me|What do|Is there|I hope|Enjoy)[\s\S]*$/i, '')
+          .trim();
+        if (cleaned.length > 50) {
+          content = cleaned;
+        }
+      }
+      
+      if (content) {
         actions.push({
           type: 'insert-text',
           label: '📝 Insert into Chapter',
