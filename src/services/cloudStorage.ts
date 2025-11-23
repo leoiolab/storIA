@@ -50,23 +50,44 @@ export class CloudStorageService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const url = `${API_URL}${endpoint}`;
+    console.log(`[CloudStorage] Making request to: ${url}`, { method: options.method || 'GET' });
 
-    if (response.status === 401) {
-      // Token expired or invalid
-      this.clearToken();
-      throw new Error('Authentication required');
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (response.status === 401) {
+        // Token expired or invalid
+        this.clearToken();
+        throw new Error('Authentication required');
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Request failed' }));
+        console.error(`[CloudStorage] Request failed: ${response.status}`, error);
+        throw new Error(error.error || `Request failed with status ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error: any) {
+      // Handle network errors, CORS issues, etc.
+      console.error(`[CloudStorage] Network error for ${url}:`, error);
+      
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        // Network error - could be CORS, server down, or wrong URL
+        const errorMessage = `Unable to connect to server. Please check:
+1. The backend server is running
+2. The API URL is correct (current: ${API_URL})
+3. CORS is properly configured on the backend`;
+        throw new Error(errorMessage);
+      }
+      
+      // Re-throw other errors as-is
+      throw error;
     }
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
-    }
-
-    return response.json();
   }
 
   // Auth API
@@ -185,6 +206,10 @@ export class CloudStorageService {
   }
 
   static async createCharacter(projectId: string, character: Omit<Character, 'id'>): Promise<Character> {
+    if (!projectId) {
+      throw new Error('Project ID is required to create a character');
+    }
+
     // Ensure relationships is properly formatted as an array
     const relationships = character.relationships 
       ? character.relationships.map(rel => ({
@@ -194,22 +219,31 @@ export class CloudStorageService {
         }))
       : [];
 
-    const created = await this.request('/characters', {
-      method: 'POST',
-      body: JSON.stringify({
-        projectId,
-        name: character.name,
-        type: character.type,
-        quickDescription: character.description,
-        fullBio: character.biography,
-        characterArc: character.characterArc,
-        age: character.age,
-        role: character.role,
-        relationships: relationships
-      }),
-    });
+    const payload = {
+      projectId,
+      name: character.name,
+      type: character.type,
+      quickDescription: character.description,
+      fullBio: character.biography,
+      characterArc: character.characterArc,
+      age: character.age,
+      role: character.role,
+      relationships: relationships
+    };
 
-    return CloudStorageService.mapCharacterFromAPI(created);
+    console.log('[CloudStorage] Creating character:', { projectId, name: character.name, payload });
+
+    try {
+      const created = await this.request('/characters', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      return CloudStorageService.mapCharacterFromAPI(created);
+    } catch (error: any) {
+      console.error('[CloudStorage] Failed to create character:', error);
+      throw new Error(`Failed to create character: ${error.message || 'Unknown error'}`);
+    }
   }
 
   static async updateCharacter(id: string, character: Partial<Character>): Promise<Character> {
