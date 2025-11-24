@@ -106,9 +106,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (req.body.plotPoints !== undefined) chapter.plotPoints = req.body.plotPoints;
     if (req.body.isLocked !== undefined) chapter.isLocked = req.body.isLocked;
 
-    // Update word count
-    if (contentChanged && chapter.content) {
-      chapter.wordCount = chapter.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    // Update word count using the new content value
+    if (contentChanged) {
+      const newContent = req.body.content || chapter.content || '';
+      chapter.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
     }
     
     // Mark versions as modified to ensure it's saved

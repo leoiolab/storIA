@@ -96,8 +96,9 @@ chapterSchema.index({ projectId: 1, order: 1 });
 
 // Update word count before saving (version saving is handled in route handler)
 chapterSchema.pre('save', function(next) {
-  if (this.isModified('content') && this.content) {
-    this.wordCount = this.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+  if (this.isModified('content')) {
+    const content = this.content || '';
+    this.wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
   }
   next();
 });
