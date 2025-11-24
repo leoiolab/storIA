@@ -118,9 +118,11 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     
     await chapter.save();
     res.json(chapter);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update chapter error:', error);
-    res.status(500).json({ error: 'Failed to update chapter' });
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to update chapter', details: error.message });
   }
 });
 
