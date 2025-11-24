@@ -121,9 +121,17 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     res.json(chapter);
   } catch (error: any) {
     console.error('Update chapter error:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ error: 'Failed to update chapter', details: error.message });
+    console.error('Error details:', error?.message || String(error));
+    console.error('Error name:', error?.name);
+    console.error('Error stack:', error?.stack);
+    if (error?.errors) {
+      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+    }
+    res.status(500).json({ 
+      error: 'Failed to update chapter', 
+      details: error?.message || String(error),
+      name: error?.name
+    });
   }
 });
 
