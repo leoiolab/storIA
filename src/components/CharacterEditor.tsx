@@ -32,7 +32,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   
   const currentState = getCurrentState();
 
-  // Only sync when character ID changes, not on every update
+  // Only sync when character ID changes or when content actually differs
   useEffect(() => {
     if (!character) {
       setIsLocked(false);
@@ -51,24 +51,18 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
       lastCharacterIdRef.current = character.id;
       isInternalUpdateRef.current = false;
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the update came from outside (e.g., another component)
-      // Check if values actually changed before updating
-      if (
-        name !== character.name ||
-        description !== character.description ||
-        biography !== character.biography ||
-        characterArc !== (character.characterArc || '') ||
-        JSON.stringify(relationships) !== JSON.stringify(character.relationships || [])
-      ) {
-        setName(character.name);
-        setDescription(character.description);
-        setBiography(character.biography);
-        setCharacterArc(character.characterArc || '');
-        setRelationships(character.relationships || []);
-        setIsLocked(character.isLocked || false);
-      }
+      // Only sync if the actual content is different (not just object reference)
+      // This prevents unnecessary updates that cause cursor jumps
+      const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(character.relationships || []);
+      
+      if (name !== character.name) setName(character.name);
+      if (description !== character.description) setDescription(character.description);
+      if (biography !== character.biography) setBiography(character.biography);
+      if (characterArc !== (character.characterArc || '')) setCharacterArc(character.characterArc || '');
+      if (!relationshipsEqual) setRelationships(character.relationships || []);
+      if (isLocked !== (character.isLocked || false)) setIsLocked(character.isLocked || false);
     }
-  }, [character, name, description, biography, characterArc, relationships]);
+  }, [character, name, description, biography, characterArc, relationships, isLocked]);
   
   // Notify parent of state changes
   useEffect(() => {
@@ -107,15 +101,15 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
         updatedAt: Date.now(),
       };
       onUpdateCharacter(updatedCharacter);
-      // Reset flag after a short delay to allow state to update
+      // Reset flag after state propagates back
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 100);
+      }, 200);
     }, 500);
 
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, description, biography, characterArc, relationships, character]);
+  }, [name, description, biography, characterArc, relationships, isLocked, character]);
 
   const handleAddRelationship = () => {
     const newRelationship: CharacterRelationship = {

@@ -30,43 +30,14 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
       coverImage: metadata.coverImage
     });
 
-    // Only update if this is different metadata or if update came from outside
+    // Only update if this is different metadata
     if (metadataId !== lastMetadataIdRef.current) {
-      // Preserve cursor positions before updating
-      const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
-      const authorCursorPos = authorInputRef.current?.selectionStart ?? null;
-      const genreCursorPos = genreInputRef.current?.selectionStart ?? null;
-      const targetWordCountCursorPos = targetWordCountInputRef.current?.selectionStart ?? null;
-      const themesCursorPos = themesInputRef.current?.selectionStart ?? null;
-      const synopsisCursorPos = synopsisTextareaRef.current?.selectionStart ?? null;
-
       setLocalMetadata(metadata);
       lastMetadataIdRef.current = metadataId;
       isInternalUpdateRef.current = false;
-
-      // Restore cursor positions after state update
-      requestAnimationFrame(() => {
-        if (titleCursorPos !== null && titleInputRef.current) {
-          titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
-        }
-        if (authorCursorPos !== null && authorInputRef.current) {
-          authorInputRef.current.setSelectionRange(authorCursorPos, authorCursorPos);
-        }
-        if (genreCursorPos !== null && genreInputRef.current) {
-          genreInputRef.current.setSelectionRange(genreCursorPos, genreCursorPos);
-        }
-        if (targetWordCountCursorPos !== null && targetWordCountInputRef.current) {
-          targetWordCountInputRef.current.setSelectionRange(targetWordCountCursorPos, targetWordCountCursorPos);
-        }
-        if (themesCursorPos !== null && themesInputRef.current) {
-          themesInputRef.current.setSelectionRange(themesCursorPos, themesCursorPos);
-        }
-        if (synopsisCursorPos !== null && synopsisTextareaRef.current) {
-          synopsisTextareaRef.current.setSelectionRange(synopsisCursorPos, synopsisCursorPos);
-        }
-      });
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the update came from outside and values actually changed
+      // Only sync if the actual content is different (not just object reference)
+      // This prevents unnecessary updates that cause cursor jumps
       const hasChanges = 
         localMetadata.title !== metadata.title ||
         localMetadata.author !== metadata.author ||
@@ -77,37 +48,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         localMetadata.coverImage !== metadata.coverImage;
 
       if (hasChanges) {
-        // Preserve cursor positions
-        const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
-        const authorCursorPos = authorInputRef.current?.selectionStart ?? null;
-        const genreCursorPos = genreInputRef.current?.selectionStart ?? null;
-        const targetWordCountCursorPos = targetWordCountInputRef.current?.selectionStart ?? null;
-        const themesCursorPos = themesInputRef.current?.selectionStart ?? null;
-        const synopsisCursorPos = synopsisTextareaRef.current?.selectionStart ?? null;
-
         setLocalMetadata(metadata);
-
-        // Restore cursor positions
-        requestAnimationFrame(() => {
-          if (titleCursorPos !== null && titleInputRef.current) {
-            titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
-          }
-          if (authorCursorPos !== null && authorInputRef.current) {
-            authorInputRef.current.setSelectionRange(authorCursorPos, authorCursorPos);
-          }
-          if (genreCursorPos !== null && genreInputRef.current) {
-            genreInputRef.current.setSelectionRange(genreCursorPos, genreCursorPos);
-          }
-          if (targetWordCountCursorPos !== null && targetWordCountInputRef.current) {
-            targetWordCountInputRef.current.setSelectionRange(targetWordCountCursorPos, targetWordCountCursorPos);
-          }
-          if (themesCursorPos !== null && themesInputRef.current) {
-            themesInputRef.current.setSelectionRange(themesCursorPos, themesCursorPos);
-          }
-          if (synopsisCursorPos !== null && synopsisTextareaRef.current) {
-            synopsisTextareaRef.current.setSelectionRange(synopsisCursorPos, synopsisCursorPos);
-          }
-        });
       }
     }
   }, [metadata, localMetadata]);
@@ -130,10 +71,10 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     const timeoutId = setTimeout(() => {
       isInternalUpdateRef.current = true;
       onUpdateMetadata(localMetadata);
-      // Reset flag after a short delay to allow state to update
+      // Reset flag after state propagates back
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 100);
+      }, 200);
     }, 500);
 
     return () => clearTimeout(timeoutId);

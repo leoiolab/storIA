@@ -31,7 +31,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   
   const currentState = getCurrentState();
 
-  // Only sync when chapter ID changes, not on every update
+  // Only sync when chapter ID changes or when content actually differs
   useEffect(() => {
     if (!chapter) {
       setIsLocked(false);
@@ -47,26 +47,17 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       lastChapterIdRef.current = chapter.id;
       isInternalUpdateRef.current = false;
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the update came from outside (e.g., another component)
-      // Preserve cursor position
-      const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
-      const contentCursorPos = contentTextareaRef.current?.selectionStart ?? null;
-      
-      setTitle(chapter.title);
-      setContent(chapter.content);
-      setIsLocked(chapter.isLocked || false);
-      
-      // Restore cursor position after state update
-      requestAnimationFrame(() => {
-        if (titleCursorPos !== null && titleInputRef.current) {
-          titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
-        }
-        if (contentCursorPos !== null && contentTextareaRef.current) {
-          contentTextareaRef.current.setSelectionRange(contentCursorPos, contentCursorPos);
-        }
-      });
+      // Only sync if the actual content is different (not just object reference)
+      // This prevents unnecessary updates that cause cursor jumps
+      if (title !== chapter.title || content !== chapter.content) {
+        setTitle(chapter.title);
+        setContent(chapter.content);
+      }
+      if (isLocked !== (chapter.isLocked || false)) {
+        setIsLocked(chapter.isLocked || false);
+      }
     }
-  }, [chapter]);
+  }, [chapter, title, content, isLocked]);
   
   // Notify parent of state changes
   useEffect(() => {
@@ -79,7 +70,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     if (!chapter) return;
     
     // Don't update if values haven't actually changed
-    if (title === chapter.title && content === chapter.content) {
+    if (title === chapter.title && content === chapter.content && isLocked === (chapter.isLocked || false)) {
       return;
     }
 
@@ -93,14 +84,14 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         updatedAt: Date.now(),
       };
       onUpdateChapter(updatedChapter);
-      // Reset flag after a short delay to allow state to update
+      // Reset flag after state propagates back
       setTimeout(() => {
         isInternalUpdateRef.current = false;
-      }, 100);
+      }, 200);
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [title, content, chapter]);
+  }, [title, content, isLocked, chapter]);
 
   if (!chapter) {
     return (
