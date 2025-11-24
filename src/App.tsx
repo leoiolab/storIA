@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { BookOpen } from 'lucide-react';
 import Sidebar, { View } from './components/Sidebar';
 import ProjectSwitcher from './components/ProjectSwitcher';
 import BookSelectionScreen from './components/BookSelectionScreen';
@@ -668,7 +669,8 @@ function App() {
             onClick={handleBackToSelection}
             title="Back to book selection"
           >
-            Select Book
+            <BookOpen size={20} />
+            <span>Select Book</span>
           </button>
         </div>
       </Sidebar>
