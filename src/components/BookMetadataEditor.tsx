@@ -11,18 +11,133 @@ interface BookMetadataEditorProps {
 function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorProps) {
   const [localMetadata, setLocalMetadata] = useState(metadata);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const authorInputRef = useRef<HTMLInputElement>(null);
+  const genreInputRef = useRef<HTMLInputElement>(null);
+  const targetWordCountInputRef = useRef<HTMLInputElement>(null);
+  const themesInputRef = useRef<HTMLInputElement>(null);
+  const synopsisTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastMetadataIdRef = useRef<string | null>(null);
+  const isInternalUpdateRef = useRef(false);
+
+  // Only sync when metadata actually changes (not just reference)
+  useEffect(() => {
+    // Create a simple ID from metadata to detect actual changes
+    const metadataId = JSON.stringify({
+      title: metadata.title,
+      author: metadata.author,
+      genre: metadata.genre,
+      coverImage: metadata.coverImage
+    });
+
+    // Only update if this is different metadata or if update came from outside
+    if (metadataId !== lastMetadataIdRef.current) {
+      // Preserve cursor positions before updating
+      const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
+      const authorCursorPos = authorInputRef.current?.selectionStart ?? null;
+      const genreCursorPos = genreInputRef.current?.selectionStart ?? null;
+      const targetWordCountCursorPos = targetWordCountInputRef.current?.selectionStart ?? null;
+      const themesCursorPos = themesInputRef.current?.selectionStart ?? null;
+      const synopsisCursorPos = synopsisTextareaRef.current?.selectionStart ?? null;
+
+      setLocalMetadata(metadata);
+      lastMetadataIdRef.current = metadataId;
+      isInternalUpdateRef.current = false;
+
+      // Restore cursor positions after state update
+      requestAnimationFrame(() => {
+        if (titleCursorPos !== null && titleInputRef.current) {
+          titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
+        }
+        if (authorCursorPos !== null && authorInputRef.current) {
+          authorInputRef.current.setSelectionRange(authorCursorPos, authorCursorPos);
+        }
+        if (genreCursorPos !== null && genreInputRef.current) {
+          genreInputRef.current.setSelectionRange(genreCursorPos, genreCursorPos);
+        }
+        if (targetWordCountCursorPos !== null && targetWordCountInputRef.current) {
+          targetWordCountInputRef.current.setSelectionRange(targetWordCountCursorPos, targetWordCountCursorPos);
+        }
+        if (themesCursorPos !== null && themesInputRef.current) {
+          themesInputRef.current.setSelectionRange(themesCursorPos, themesCursorPos);
+        }
+        if (synopsisCursorPos !== null && synopsisTextareaRef.current) {
+          synopsisTextareaRef.current.setSelectionRange(synopsisCursorPos, synopsisCursorPos);
+        }
+      });
+    } else if (!isInternalUpdateRef.current) {
+      // Only sync if the update came from outside and values actually changed
+      const hasChanges = 
+        localMetadata.title !== metadata.title ||
+        localMetadata.author !== metadata.author ||
+        localMetadata.genre !== metadata.genre ||
+        localMetadata.synopsis !== metadata.synopsis ||
+        localMetadata.targetWordCount !== metadata.targetWordCount ||
+        JSON.stringify(localMetadata.themes) !== JSON.stringify(metadata.themes) ||
+        localMetadata.coverImage !== metadata.coverImage;
+
+      if (hasChanges) {
+        // Preserve cursor positions
+        const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
+        const authorCursorPos = authorInputRef.current?.selectionStart ?? null;
+        const genreCursorPos = genreInputRef.current?.selectionStart ?? null;
+        const targetWordCountCursorPos = targetWordCountInputRef.current?.selectionStart ?? null;
+        const themesCursorPos = themesInputRef.current?.selectionStart ?? null;
+        const synopsisCursorPos = synopsisTextareaRef.current?.selectionStart ?? null;
+
+        setLocalMetadata(metadata);
+
+        // Restore cursor positions
+        requestAnimationFrame(() => {
+          if (titleCursorPos !== null && titleInputRef.current) {
+            titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
+          }
+          if (authorCursorPos !== null && authorInputRef.current) {
+            authorInputRef.current.setSelectionRange(authorCursorPos, authorCursorPos);
+          }
+          if (genreCursorPos !== null && genreInputRef.current) {
+            genreInputRef.current.setSelectionRange(genreCursorPos, genreCursorPos);
+          }
+          if (targetWordCountCursorPos !== null && targetWordCountInputRef.current) {
+            targetWordCountInputRef.current.setSelectionRange(targetWordCountCursorPos, targetWordCountCursorPos);
+          }
+          if (themesCursorPos !== null && themesInputRef.current) {
+            themesInputRef.current.setSelectionRange(themesCursorPos, themesCursorPos);
+          }
+          if (synopsisCursorPos !== null && synopsisTextareaRef.current) {
+            synopsisTextareaRef.current.setSelectionRange(synopsisCursorPos, synopsisCursorPos);
+          }
+        });
+      }
+    }
+  }, [metadata, localMetadata]);
 
   useEffect(() => {
-    setLocalMetadata(metadata);
-  }, [metadata]);
+    // Don't update if values haven't actually changed
+    const hasChanges = 
+      localMetadata.title !== metadata.title ||
+      localMetadata.author !== metadata.author ||
+      localMetadata.genre !== metadata.genre ||
+      localMetadata.synopsis !== metadata.synopsis ||
+      localMetadata.targetWordCount !== metadata.targetWordCount ||
+      JSON.stringify(localMetadata.themes) !== JSON.stringify(metadata.themes) ||
+      localMetadata.coverImage !== metadata.coverImage;
 
-  useEffect(() => {
+    if (!hasChanges) {
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
+      isInternalUpdateRef.current = true;
       onUpdateMetadata(localMetadata);
+      // Reset flag after a short delay to allow state to update
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 100);
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [localMetadata]);
+  }, [localMetadata, metadata, onUpdateMetadata]);
 
   const handleThemeChange = (value: string) => {
     const themes = value.split(',').map(t => t.trim()).filter(t => t);
@@ -108,6 +223,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="title">Title</label>
           <input
+            ref={titleInputRef}
             id="title"
             type="text"
             value={localMetadata.title}
@@ -120,6 +236,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="author">Author</label>
           <input
+            ref={authorInputRef}
             id="author"
             type="text"
             value={localMetadata.author || ''}
@@ -132,6 +249,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="genre">Genre</label>
           <input
+            ref={genreInputRef}
             id="genre"
             type="text"
             value={localMetadata.genre || ''}
@@ -144,6 +262,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="targetWordCount">Target Word Count</label>
           <input
+            ref={targetWordCountInputRef}
             id="targetWordCount"
             type="number"
             value={localMetadata.targetWordCount || ''}
@@ -156,6 +275,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="themes">Themes (comma-separated)</label>
           <input
+            ref={themesInputRef}
             id="themes"
             type="text"
             value={localMetadata.themes?.join(', ') || ''}
@@ -168,6 +288,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         <div className="form-group">
           <label htmlFor="synopsis">Synopsis</label>
           <textarea
+            ref={synopsisTextareaRef}
             id="synopsis"
             value={localMetadata.synopsis || ''}
             onChange={(e) => setLocalMetadata({ ...localMetadata, synopsis: e.target.value })}
