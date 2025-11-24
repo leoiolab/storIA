@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Lock, Unlock, GitCompare } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
@@ -17,6 +17,10 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const [content, setContent] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [showVersionComparison, setShowVersionComparison] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastChapterIdRef = useRef<string | null>(null);
+  const isInternalUpdateRef = useRef(false);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -27,13 +31,40 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   
   const currentState = getCurrentState();
 
+  // Only sync when chapter ID changes, not on every update
   useEffect(() => {
-    if (chapter) {
+    if (!chapter) {
+      setIsLocked(false);
+      lastChapterIdRef.current = null;
+      return;
+    }
+
+    // Only update if this is a different chapter
+    if (chapter.id !== lastChapterIdRef.current) {
       setTitle(chapter.title);
       setContent(chapter.content);
       setIsLocked(chapter.isLocked || false);
-    } else {
-      setIsLocked(false);
+      lastChapterIdRef.current = chapter.id;
+      isInternalUpdateRef.current = false;
+    } else if (!isInternalUpdateRef.current) {
+      // Only sync if the update came from outside (e.g., another component)
+      // Preserve cursor position
+      const titleCursorPos = titleInputRef.current?.selectionStart ?? null;
+      const contentCursorPos = contentTextareaRef.current?.selectionStart ?? null;
+      
+      setTitle(chapter.title);
+      setContent(chapter.content);
+      setIsLocked(chapter.isLocked || false);
+      
+      // Restore cursor position after state update
+      requestAnimationFrame(() => {
+        if (titleCursorPos !== null && titleInputRef.current) {
+          titleInputRef.current.setSelectionRange(titleCursorPos, titleCursorPos);
+        }
+        if (contentCursorPos !== null && contentTextareaRef.current) {
+          contentTextareaRef.current.setSelectionRange(contentCursorPos, contentCursorPos);
+        }
+      });
     }
   }, [chapter]);
   
@@ -53,6 +84,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     }
 
     const timeoutId = setTimeout(() => {
+      isInternalUpdateRef.current = true;
       const updatedChapter: Chapter = {
         ...chapter,
         title,
@@ -61,10 +93,14 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         updatedAt: Date.now(),
       };
       onUpdateChapter(updatedChapter);
+      // Reset flag after a short delay to allow state to update
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 100);
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [title, content]);
+  }, [title, content, chapter]);
 
   if (!chapter) {
     return (
@@ -99,6 +135,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         <div className="editor-header">
           <div className="editor-header-content">
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -148,6 +185,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
 
         <div className="editor-content">
           <textarea
+            ref={contentTextareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Start writing your chapter..."

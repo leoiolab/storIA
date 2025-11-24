@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Lock, Unlock } from 'lucide-react';
 import { Character, CharacterRelationship } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
@@ -20,6 +20,8 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   const [characterArc, setCharacterArc] = useState('');
   const [relationships, setRelationships] = useState<CharacterRelationship[]>([]);
   const [isLocked, setIsLocked] = useState(false);
+  const lastCharacterIdRef = useRef<string | null>(null);
+  const isInternalUpdateRef = useRef(false);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -30,18 +32,43 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   
   const currentState = getCurrentState();
 
+  // Only sync when character ID changes, not on every update
   useEffect(() => {
-    if (character) {
+    if (!character) {
+      setIsLocked(false);
+      lastCharacterIdRef.current = null;
+      return;
+    }
+
+    // Only update if this is a different character
+    if (character.id !== lastCharacterIdRef.current) {
       setName(character.name);
       setDescription(character.description);
       setBiography(character.biography);
       setCharacterArc(character.characterArc || '');
       setRelationships(character.relationships || []);
       setIsLocked(character.isLocked || false);
-    } else {
-      setIsLocked(false);
+      lastCharacterIdRef.current = character.id;
+      isInternalUpdateRef.current = false;
+    } else if (!isInternalUpdateRef.current) {
+      // Only sync if the update came from outside (e.g., another component)
+      // Check if values actually changed before updating
+      if (
+        name !== character.name ||
+        description !== character.description ||
+        biography !== character.biography ||
+        characterArc !== (character.characterArc || '') ||
+        JSON.stringify(relationships) !== JSON.stringify(character.relationships || [])
+      ) {
+        setName(character.name);
+        setDescription(character.description);
+        setBiography(character.biography);
+        setCharacterArc(character.characterArc || '');
+        setRelationships(character.relationships || []);
+        setIsLocked(character.isLocked || false);
+      }
     }
-  }, [character]);
+  }, [character, name, description, biography, characterArc, relationships]);
   
   // Notify parent of state changes
   useEffect(() => {
@@ -68,6 +95,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
     }
 
     const timeoutId = setTimeout(() => {
+      isInternalUpdateRef.current = true;
       const updatedCharacter: Character = {
         ...character,
         name,
@@ -79,11 +107,15 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
         updatedAt: Date.now(),
       };
       onUpdateCharacter(updatedCharacter);
+      // Reset flag after a short delay to allow state to update
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 100);
     }, 500);
 
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, description, biography, characterArc, relationships]);
+  }, [name, description, biography, characterArc, relationships, character]);
 
   const handleAddRelationship = () => {
     const newRelationship: CharacterRelationship = {
