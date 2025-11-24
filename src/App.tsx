@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar, { View } from './components/Sidebar';
 import ProjectSwitcher from './components/ProjectSwitcher';
+import BookSelectionScreen from './components/BookSelectionScreen';
 import CharactersList from './components/CharactersList';
 import CharacterEditor, { EntityState } from './components/CharacterEditor';
 import ChaptersList from './components/ChaptersList';
@@ -118,48 +119,25 @@ function App() {
       setSelectedChapter(null);
 
       if (projects.length === 0) {
-        const defaultMetadata: BookMetadata = {
-          title: 'Untitled Book',
-          author: user.name || '',
-          genre: '',
-        };
-        const newProject = await CloudStorageService.createProject(defaultMetadata.title, defaultMetadata);
-
+        // No projects - user will create one from selection screen
         setAppData(prev => ({
           ...prev,
-          books: [newProject],
-          currentBookId: newProject.id,
+          books: [],
+          currentBookId: null,
           aiConfig: createInitialAppData().aiConfig,
         }));
-        setView('metadata');
-        initializeAI('');
       } else {
-        const [firstProject, ...otherProjects] = projects;
-        const detailedFirst = await CloudStorageService.getProject(firstProject.id);
-        
-        // Debug: Log settings to help diagnose issues
-        console.log('Loaded project settings:', {
-          projectId: detailedFirst.id,
-          settings: detailedFirst.settings,
-          hasApiKey: !!detailedFirst.settings?.aiApiKey
-        });
-        
-        const nextAiConfig = deriveAIConfigFromSettings(detailedFirst.settings);
+        // Load all projects but don't auto-select
+        const loadedProjects = await Promise.all(
+          projects.map(project => CloudStorageService.getProject(project.id))
+        );
 
         setAppData(prev => ({
           ...prev,
-          books: [detailedFirst, ...otherProjects],
-          currentBookId: detailedFirst.id,
-          aiConfig: nextAiConfig,
+          books: loadedProjects,
+          currentBookId: null, // Don't auto-select - show selection screen
+          aiConfig: createInitialAppData().aiConfig,
         }));
-
-        if (nextAiConfig.apiKey) {
-          console.log('Initializing AI with API key');
-          initializeAI(nextAiConfig.apiKey);
-        } else {
-          console.log('No API key found, initializing AI without key');
-          initializeAI('');
-        }
       }
 
       setSaveStatus('saved');
@@ -227,6 +205,7 @@ function App() {
       }
       setSelectedCharacter(null);
       setSelectedChapter(null);
+      setView('metadata');
       setSaveStatus('saved');
       setLastSaved(new Date());
     } catch (error) {
@@ -269,6 +248,16 @@ function App() {
       console.error('Failed to create project:', error);
       setSaveStatus('error');
     }
+  };
+
+  const handleBackToSelection = () => {
+    setAppData(prev => ({
+      ...prev,
+      currentBookId: null,
+    }));
+    setSelectedCharacter(null);
+    setSelectedChapter(null);
+    setView('metadata');
   };
 
   const updateCurrentBook = (updater: (book: Book) => Book) => {
@@ -646,6 +635,20 @@ function App() {
     return <AuthScreen onAuthSuccess={(authUser) => setUser(authUser)} />;
   }
 
+  // Show book selection screen if no book is selected
+  if (!appData.currentBookId) {
+    return (
+      <BookSelectionScreen
+        books={appData.books}
+        onSelectBook={handleSelectBook}
+        onCreateBook={createNewBook}
+        onLogout={handleLogout}
+        userName={user?.name}
+        isLoading={isLoadingBooks}
+      />
+    );
+  }
+
   // Debug: Add visible marker
   console.log('Rendering main app...');
 
@@ -658,15 +661,14 @@ function App() {
         userName={user?.name}
       >
         <div className="project-switcher-container">
-          <ProjectSwitcher
-            books={appData.books}
-            currentBook={currentBook}
-            onSelectBook={handleSelectBook}
-            onCreateBook={createNewBook}
-            onOpenSettings={() => setShowSettings(true)}
-            onOpenExport={() => setShowExport(true)}
-          />
           <SaveStatus status={saveStatus} lastSaved={lastSaved} />
+          <button 
+            className="back-to-selection-btn"
+            onClick={handleBackToSelection}
+            title="Back to book selection"
+          >
+            ← Select Book
+          </button>
         </div>
       </Sidebar>
 
