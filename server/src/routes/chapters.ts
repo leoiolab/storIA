@@ -76,8 +76,14 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     // Save version if content or title changed (before updating)
-    const contentChanged = req.body.content !== undefined && req.body.content !== chapter.content;
-    const titleChanged = req.body.title !== undefined && req.body.title !== chapter.title;
+    // Convert to strings for comparison to avoid type mismatch issues
+    const currentContent = String(chapter.content || '');
+    const currentTitle = String(chapter.title || '');
+    const newContent = req.body.content !== undefined ? String(req.body.content || '') : currentContent;
+    const newTitle = req.body.title !== undefined ? String(req.body.title || '') : currentTitle;
+    
+    const contentChanged = req.body.content !== undefined && newContent !== currentContent;
+    const titleChanged = req.body.title !== undefined && newTitle !== currentTitle;
     
     if (contentChanged || titleChanged) {
       try {
@@ -85,36 +91,32 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           chapter.versions = [];
         }
         
-        // Ensure we have valid content and title for the version
-        const versionContent = typeof chapter.content === 'string' ? chapter.content : '';
-        const versionTitle = typeof chapter.title === 'string' ? chapter.title : '';
+        // Add current version BEFORE updating (save the old version)
+        // Schema requires both content and title to be strings
+        chapter.versions.push({
+          content: currentContent,
+          title: currentTitle,
+          timestamp: new Date()
+        });
         
-        // Only save version if we have actual content or title
-        if (versionContent || versionTitle) {
-          // Add current version BEFORE updating (save the old version)
-          chapter.versions.push({
-            content: versionContent,
-            title: versionTitle,
-            timestamp: new Date()
-          });
-          
-          // Keep only last 50 versions
-          if (chapter.versions.length > 50) {
-            chapter.versions = chapter.versions.slice(-50);
-          }
-          
-          // Mark versions as modified to ensure it's saved
-          chapter.markModified('versions');
+        // Keep only last 50 versions
+        if (chapter.versions.length > 50) {
+          chapter.versions = chapter.versions.slice(-50);
         }
+        
+        // Mark versions as modified to ensure it's saved
+        chapter.markModified('versions');
       } catch (versionError: any) {
         console.error('Error saving version:', versionError);
-        // Don't fail the update if version saving fails
+        console.error('Version error details:', versionError?.message);
+        // Don't fail the update if version saving fails - clear versions and continue
+        chapter.versions = [];
       }
     }
 
-    // Update chapter fields
-    if (req.body.title !== undefined) chapter.title = req.body.title;
-    if (req.body.content !== undefined) chapter.content = req.body.content;
+    // Update chapter fields (ensure strings)
+    if (req.body.title !== undefined) chapter.title = String(req.body.title || '');
+    if (req.body.content !== undefined) chapter.content = String(req.body.content || '');
     if (req.body.synopsis !== undefined) chapter.synopsis = req.body.synopsis;
     if (req.body.notes !== undefined) chapter.notes = req.body.notes;
     if (req.body.order !== undefined) chapter.order = req.body.order;
