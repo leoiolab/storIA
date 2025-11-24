@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BookMetadata } from '../types';
 import { Image, X, Save } from 'lucide-react';
 import './BookMetadataEditor.css';
@@ -54,7 +54,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     }
   }, [metadata, localMetadata]);
 
-  const saveMetadata = () => {
+  const saveMetadata = useCallback(() => {
     // Don't update if values haven't actually changed
     const hasChanges = 
       localMetadata.title !== metadata.title ||
@@ -75,7 +75,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     setTimeout(() => {
       isInternalUpdateRef.current = false;
     }, 200);
-  };
+  }, [localMetadata, metadata, onUpdateMetadata]);
 
   useEffect(() => {
     // Don't update if values haven't actually changed
@@ -107,7 +107,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
         clearTimeout(autosaveTimeoutRef.current);
       }
     };
-  }, [localMetadata, metadata, onUpdateMetadata]);
+  }, [localMetadata, metadata, onUpdateMetadata, saveMetadata]);
 
   // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
   useEffect(() => {
@@ -123,7 +123,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [localMetadata, metadata]);
+  }, [saveMetadata]);
 
   const handleThemeChange = (value: string) => {
     const themes = value.split(',').map(t => t.trim()).filter(t => t);

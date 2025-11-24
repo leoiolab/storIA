@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock, Unlock, GitCompare, Save } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
@@ -67,7 +67,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     }
   }, [currentState, onStateChange]);
 
-  const saveChapter = () => {
+  const saveChapter = useCallback(() => {
     if (!chapter) return;
     
     // Don't update if values haven't actually changed
@@ -88,7 +88,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     setTimeout(() => {
       isInternalUpdateRef.current = false;
     }, 200);
-  };
+  }, [chapter, title, content, isLocked, onUpdateChapter]);
 
   useEffect(() => {
     if (!chapter) return;
@@ -113,7 +113,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         clearTimeout(autosaveTimeoutRef.current);
       }
     };
-  }, [title, content, isLocked, chapter]);
+  }, [title, content, isLocked, chapter, saveChapter]);
 
   // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
   useEffect(() => {
@@ -131,7 +131,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chapter, isLocked, title, content]);
+  }, [chapter, isLocked, saveChapter]);
 
   if (!chapter) {
     return (

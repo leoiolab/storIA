@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Lock, Unlock, Save } from 'lucide-react';
 import { Character, CharacterRelationship } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
@@ -89,7 +89,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
       return;
     }
 
-  const saveCharacter = () => {
+  const saveCharacter = useCallback(() => {
     if (!character) return;
     
     const currentRelationships = character.relationships || [];
@@ -122,7 +122,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
     setTimeout(() => {
       isInternalUpdateRef.current = false;
     }, 200);
-  };
+  }, [character, name, description, biography, characterArc, relationships, isLocked, onUpdateCharacter]);
 
   useEffect(() => {
     if (!character) return;
@@ -156,8 +156,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
         clearTimeout(autosaveTimeoutRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, description, biography, characterArc, relationships, isLocked, character]);
+  }, [name, description, biography, characterArc, relationships, isLocked, character, saveCharacter]);
 
   // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
   useEffect(() => {
@@ -175,7 +174,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [character, isLocked, name, description, biography, characterArc, relationships]);
+  }, [character, isLocked, saveCharacter]);
 
   const handleAddRelationship = () => {
     const newRelationship: CharacterRelationship = {
