@@ -23,6 +23,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   const lastCharacterIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedCharacterRef = useRef<Character | null>(null);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -33,11 +34,12 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   
   const currentState = getCurrentState();
 
-  // Only sync when character ID changes or when content actually differs
+  // Only sync when character ID changes or when props actually change (not when local state changes)
   useEffect(() => {
     if (!character) {
       setIsLocked(false);
       lastCharacterIdRef.current = null;
+      lastSyncedCharacterRef.current = null;
       return;
     }
 
@@ -50,20 +52,32 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
       setRelationships(character.relationships || []);
       setIsLocked(character.isLocked || false);
       lastCharacterIdRef.current = character.id;
+      lastSyncedCharacterRef.current = character;
       isInternalUpdateRef.current = false;
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the actual content is different (not just object reference)
-      // This prevents unnecessary updates that cause cursor jumps
-      const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(character.relationships || []);
-      
-      if (name !== character.name) setName(character.name);
-      if (description !== character.description) setDescription(character.description);
-      if (biography !== character.biography) setBiography(character.biography);
-      if (characterArc !== (character.characterArc || '')) setCharacterArc(character.characterArc || '');
-      if (!relationshipsEqual) setRelationships(character.relationships || []);
-      if (isLocked !== (character.isLocked || false)) setIsLocked(character.isLocked || false);
+      // Only sync FROM props if the props actually changed (external update)
+      // Don't sync if only local state changed (user typing)
+      const lastSynced = lastSyncedCharacterRef.current;
+      if (lastSynced && (
+        lastSynced.name !== character.name ||
+        lastSynced.description !== character.description ||
+        lastSynced.biography !== character.biography ||
+        (lastSynced.characterArc || '') !== (character.characterArc || '') ||
+        JSON.stringify(lastSynced.relationships || []) !== JSON.stringify(character.relationships || []) ||
+        (lastSynced.isLocked || false) !== (character.isLocked || false)
+      )) {
+        // Props changed externally (e.g., from autosave), sync them
+        if (name !== character.name) setName(character.name);
+        if (description !== character.description) setDescription(character.description);
+        if (biography !== character.biography) setBiography(character.biography);
+        if (characterArc !== (character.characterArc || '')) setCharacterArc(character.characterArc || '');
+        const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(character.relationships || []);
+        if (!relationshipsEqual) setRelationships(character.relationships || []);
+        if (isLocked !== (character.isLocked || false)) setIsLocked(character.isLocked || false);
+        lastSyncedCharacterRef.current = character;
+      }
     }
-  }, [character, name, description, biography, characterArc, relationships, isLocked]);
+  }, [character]); // Only depend on character, not local state
   
   // Notify parent of state changes
   useEffect(() => {

@@ -20,8 +20,9 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
   const lastMetadataIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedMetadataRef = useRef<BookMetadata | null>(null);
 
-  // Only sync when metadata actually changes (not just reference)
+  // Only sync when metadata actually changes (not when local state changes)
   useEffect(() => {
     // Create a simple ID from metadata to detect actual changes
     const metadataId = JSON.stringify({
@@ -35,24 +36,27 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     if (metadataId !== lastMetadataIdRef.current) {
       setLocalMetadata(metadata);
       lastMetadataIdRef.current = metadataId;
+      lastSyncedMetadataRef.current = metadata;
       isInternalUpdateRef.current = false;
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the actual content is different (not just object reference)
-      // This prevents unnecessary updates that cause cursor jumps
-      const hasChanges = 
-        localMetadata.title !== metadata.title ||
-        localMetadata.author !== metadata.author ||
-        localMetadata.genre !== metadata.genre ||
-        localMetadata.synopsis !== metadata.synopsis ||
-        localMetadata.targetWordCount !== metadata.targetWordCount ||
-        JSON.stringify(localMetadata.themes) !== JSON.stringify(metadata.themes) ||
-        localMetadata.coverImage !== metadata.coverImage;
-
-      if (hasChanges) {
+      // Only sync FROM props if the props actually changed (external update)
+      // Don't sync if only local state changed (user typing)
+      const lastSynced = lastSyncedMetadataRef.current;
+      if (lastSynced && (
+        lastSynced.title !== metadata.title ||
+        lastSynced.author !== metadata.author ||
+        lastSynced.genre !== metadata.genre ||
+        lastSynced.synopsis !== metadata.synopsis ||
+        lastSynced.targetWordCount !== metadata.targetWordCount ||
+        JSON.stringify(lastSynced.themes || []) !== JSON.stringify(metadata.themes || []) ||
+        lastSynced.coverImage !== metadata.coverImage
+      )) {
+        // Props changed externally (e.g., from autosave), sync them
         setLocalMetadata(metadata);
+        lastSyncedMetadataRef.current = metadata;
       }
     }
-  }, [metadata, localMetadata]);
+  }, [metadata]); // Only depend on metadata, not local state
 
   const saveMetadata = useCallback(() => {
     // Don't update if values haven't actually changed

@@ -22,6 +22,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const lastChapterIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedChapterRef = useRef<Chapter | null>(null);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -32,11 +33,12 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   
   const currentState = getCurrentState();
 
-  // Only sync when chapter ID changes or when content actually differs
+  // Only sync when chapter ID changes or when props actually change (not when local state changes)
   useEffect(() => {
     if (!chapter) {
       setIsLocked(false);
       lastChapterIdRef.current = null;
+      lastSyncedChapterRef.current = null;
       return;
     }
 
@@ -46,19 +48,25 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       setContent(chapter.content);
       setIsLocked(chapter.isLocked || false);
       lastChapterIdRef.current = chapter.id;
+      lastSyncedChapterRef.current = chapter;
       isInternalUpdateRef.current = false;
     } else if (!isInternalUpdateRef.current) {
-      // Only sync if the actual content is different (not just object reference)
-      // This prevents unnecessary updates that cause cursor jumps
-      if (title !== chapter.title || content !== chapter.content) {
-        setTitle(chapter.title);
-        setContent(chapter.content);
-      }
-      if (isLocked !== (chapter.isLocked || false)) {
-        setIsLocked(chapter.isLocked || false);
+      // Only sync FROM props if the props actually changed (external update)
+      // Don't sync if only local state changed (user typing)
+      const lastSynced = lastSyncedChapterRef.current;
+      if (lastSynced && (
+        lastSynced.title !== chapter.title ||
+        lastSynced.content !== chapter.content ||
+        (lastSynced.isLocked || false) !== (chapter.isLocked || false)
+      )) {
+        // Props changed externally (e.g., from autosave), sync them
+        if (title !== chapter.title) setTitle(chapter.title);
+        if (content !== chapter.content) setContent(chapter.content);
+        if (isLocked !== (chapter.isLocked || false)) setIsLocked(chapter.isLocked || false);
+        lastSyncedChapterRef.current = chapter;
       }
     }
-  }, [chapter, title, content, isLocked]);
+  }, [chapter]); // Only depend on chapter, not local state
   
   // Notify parent of state changes
   useEffect(() => {

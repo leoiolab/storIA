@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Chapter } from '../types';
+import { Chapter, Book } from '../types';
 import { ChevronLeft, ChevronRight, Settings, BookOpen, Type, Palette } from 'lucide-react';
 import './ReaderView.css';
 
