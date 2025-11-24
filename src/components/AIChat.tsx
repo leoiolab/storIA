@@ -105,7 +105,7 @@ function AIChat({ book, selectedCharacter, selectedChapter, messages, setMessage
           if (book.chapters.length > 0) {
             aiResponse += `**Recent Chapter Activity:**\n`;
             const recentChapters = book.chapters.slice(-3);
-            recentChapters.forEach((ch, i) => {
+            recentChapters.forEach((ch) => {
               aiResponse += `- ${ch.title} (${ch.content.split(/\s+/).filter(w => w.length > 0).length} words)\n`;
             });
             aiResponse += `\n`;

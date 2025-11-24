@@ -10,15 +10,14 @@ import ChapterEditor from './components/ChapterEditor';
 import BookMetadataEditor from './components/BookMetadataEditor';
 import RelationshipMap from './components/RelationshipMap';
 import StoryArcView from './components/StoryArcView';
-import ReaderView from './components/ReaderView';
 import KindleReader from './components/KindleReader';
 import CursorAgent, { AgentMessage } from './components/CursorAgent';
 import SettingsModal from './components/SettingsModal';
 import ExportModal from './components/ExportModal';
 import SaveStatus from './components/SaveStatus';
 import AuthScreen from './components/AuthScreen';
-import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, PlotPoint, Timeline, ProjectSettings } from './types';
-import { initializeAI, isAIConfigured } from './services/ai';
+import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, ProjectSettings } from './types';
+import { initializeAI } from './services/ai';
 import { CloudStorageService, AuthUser } from './services/cloudStorage';
 import './App.css';
 
@@ -732,8 +731,8 @@ function App() {
               id: Date.now().toString(),
               name: characterData.name || 'New Character',
               type: characterData.type || 'secondary',
-              description: characterData.quickDescription || characterData.description || '',
-              biography: characterData.fullBio || characterData.biography || characterData.bio || '',
+              description: characterData.description || '',
+              biography: characterData.biography || '',
               age: characterData.age,
               role: characterData.role,
               relationships: [],
@@ -756,8 +755,8 @@ function App() {
             if (selectedCharacter) {
               handleUpdateCharacter({
                 ...selectedCharacter,
-                description: characterData.quickDescription || characterData.description || selectedCharacter.description,
-                biography: characterData.fullBio || characterData.biography || characterData.bio || selectedCharacter.biography,
+                description: characterData.description || selectedCharacter.description,
+                biography: characterData.biography || selectedCharacter.biography,
                 characterArc: characterData.characterArc || selectedCharacter.characterArc,
                 age: characterData.age || selectedCharacter.age,
                 role: characterData.role || selectedCharacter.role,

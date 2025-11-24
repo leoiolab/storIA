@@ -43,7 +43,7 @@ export class CloudStorageService {
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string> || {}),
     };
 
     if (token) {
@@ -138,7 +138,7 @@ export class CloudStorageService {
   // Projects API
   static async getProjects(): Promise<Book[]> {
     const projects = await CloudStorageService.request('/projects');
-    return projects.map(project => CloudStorageService.mapProjectToBook(project));
+    return projects.map((project: any) => CloudStorageService.mapProjectToBook(project));
   }
 
   static async getProject(id: string): Promise<Book> {
@@ -202,7 +202,7 @@ export class CloudStorageService {
   // Characters API
   static async getCharactersByProject(projectId: string): Promise<Character[]> {
     const characters = await this.request(`/characters/project/${projectId}`);
-    return characters.map(char => CloudStorageService.mapCharacterFromAPI(char));
+    return characters.map((char: any) => CloudStorageService.mapCharacterFromAPI(char));
   }
 
   static async createCharacter(projectId: string, character: Omit<Character, 'id'>): Promise<Character> {
@@ -295,7 +295,7 @@ export class CloudStorageService {
   // Chapters API
   static async getChaptersByProject(projectId: string): Promise<Chapter[]> {
     const chapters = await this.request(`/chapters/project/${projectId}`);
-    return chapters.map(chapter => CloudStorageService.mapChapterFromAPI(chapter));
+    return chapters.map((chapter: any) => CloudStorageService.mapChapterFromAPI(chapter));
   }
 
   static async createChapter(projectId: string, chapter: Omit<Chapter, 'id'>): Promise<Chapter> {
@@ -348,7 +348,7 @@ export class CloudStorageService {
       body: JSON.stringify({ projectId, chapterOrders }),
     });
 
-    return chapters.map(chapter => CloudStorageService.mapChapterFromAPI(chapter));
+    return chapters.map((chapter: any) => CloudStorageService.mapChapterFromAPI(chapter));
   }
 
   // Mappers

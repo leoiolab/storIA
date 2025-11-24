@@ -36,25 +36,26 @@ function ContextAwareEditor({
     setImpacts([]);
   };
 
-  const handleSave = async (newData: any) => {
-    const currentData = getCurrentData();
-    
-    // Create snapshot of current state
-    // const snapshotId = contextManager.createSnapshot(entityType, entityId, currentData, book);
-    
-    // Analyze impact of changes
-    // const impactAnalysis = contextManager.updateSnapshot(snapshotId, newData, book);
-    
-    // Show impact analysis if there are significant changes
-    if (hasSignificantChanges(currentData, newData)) {
-      setPendingChanges(newData);
-      setShowContext(true);
-      return;
-    }
-
-    // Save directly if no significant impact
-    onSave(newData);
-  };
+  // Unused function - commented out to fix TypeScript warning
+  // const handleSave = async (newData: any) => {
+  //   const currentData = getCurrentData();
+  //   
+  //   // Create snapshot of current state
+  //   // const snapshotId = contextManager.createSnapshot(entityType, entityId, currentData, book);
+  //   
+  //   // Analyze impact of changes
+  //   // const impactAnalysis = contextManager.updateSnapshot(snapshotId, newData, book);
+  //   
+  //   // Show impact analysis if there are significant changes
+  //   if (hasSignificantChanges(currentData, newData)) {
+  //     setPendingChanges(newData);
+  //     setShowContext(true);
+  //     return;
+  //   }
+  //
+  //   // Save directly if no significant impact
+  //   onSave(newData);
+  // };
 
   const hasSignificantChanges = (oldData: any, newData: any): boolean => {
     if (entityType === 'character') {

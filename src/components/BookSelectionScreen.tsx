@@ -1,4 +1,3 @@
-import React from 'react';
 import { Book as BookType } from '../types';
 import { Book, Plus, LogOut } from 'lucide-react';
 import './BookSelectionScreen.css';

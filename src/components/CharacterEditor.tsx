@@ -72,23 +72,6 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
     }
   }, [currentState, onStateChange]);
 
-  useEffect(() => {
-    if (!character) return;
-    
-    // Don't update if values haven't actually changed
-    const currentRelationships = character.relationships || [];
-    const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(currentRelationships);
-    
-    if (
-      name === character.name &&
-      description === character.description &&
-      biography === character.biography &&
-      characterArc === (character.characterArc || '') &&
-      relationshipsEqual
-    ) {
-      return;
-    }
-
   const saveCharacter = useCallback(() => {
     if (!character) return;
     

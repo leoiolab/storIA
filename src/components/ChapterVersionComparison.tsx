@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { X, Clock } from 'lucide-react';
 import { Chapter, ChapterVersion } from '../types';
 import './ChapterVersionComparison.css';

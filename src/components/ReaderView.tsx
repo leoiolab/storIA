@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Book, Chapter } from '../types';
+import { useState, useEffect } from 'react';
+import { Chapter } from '../types';
 import { ChevronLeft, ChevronRight, Settings, BookOpen, Type, Palette } from 'lucide-react';
 import './ReaderView.css';
 
@@ -44,10 +44,10 @@ export function ReaderView({ book }: ReaderViewProps) {
   };
 
   // Calculate reading progress
-  const totalWords = chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0);
+  const totalWords = chapters.reduce((sum: number, ch: Chapter) => sum + (ch.wordCount || 0), 0);
   const wordsRead = chapters
     .slice(0, currentChapterIndex)
-    .reduce((sum, ch) => sum + (ch.wordCount || 0), 0);
+    .reduce((sum: number, ch: Chapter) => sum + (ch.wordCount || 0), 0);
   const progressPercent = totalWords > 0 ? Math.round((wordsRead / totalWords) * 100) : 0;
 
   // Keyboard navigation
@@ -112,7 +112,7 @@ export function ReaderView({ book }: ReaderViewProps) {
             <button onClick={() => setShowChapterList(false)}>✕</button>
           </div>
           <div className="reader-chapter-list">
-            {chapters.map((chapter, index) => (
+            {chapters.map((chapter: Chapter, index: number) => (
               <button
                 key={chapter.id}
                 className={`reader-chapter-item ${index === currentChapterIndex ? 'active' : ''}`}
@@ -234,7 +234,7 @@ export function ReaderView({ book }: ReaderViewProps) {
           </div>
 
           <div className="reader-text">
-            {currentChapter.content.split('\n\n').map((paragraph, index) => (
+            {currentChapter.content.split('\n\n').map((paragraph: string, index: number) => (
               <p key={index}>{paragraph}</p>
             ))}
           </div>

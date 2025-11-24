@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Book, Chapter } from '../types';
-import { ChevronLeft, ChevronRight, Settings, BookOpen, X, Menu } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Settings, BookOpen, X } from 'lucide-react';
 import './KindleReader.css';
 
 interface KindleReaderProps {
@@ -48,7 +47,7 @@ export function KindleReader({ book }: KindleReaderProps) {
       if (!container) return;
 
       const content = currentChapter.content;
-      const paragraphs = content.split('\n\n').filter(p => p.trim());
+      // const paragraphs = content.split('\n\n').filter(p => p.trim());
       
       // Simple pagination - split into chunks
       const allWords = content.split(/\s+/);
