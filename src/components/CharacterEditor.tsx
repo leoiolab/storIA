@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Lock, Unlock } from 'lucide-react';
+import { Plus, Trash2, Lock, Unlock, Save } from 'lucide-react';
 import { Character, CharacterRelationship } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import './CharacterEditor.css';
@@ -22,6 +22,7 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
   const [isLocked, setIsLocked] = useState(false);
   const lastCharacterIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -88,28 +89,93 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
       return;
     }
 
-    const timeoutId = setTimeout(() => {
-      isInternalUpdateRef.current = true;
-      const updatedCharacter: Character = {
-        ...character,
-        name,
-        description,
-        biography,
-        characterArc,
-        relationships,
-        isLocked,
-        updatedAt: Date.now(),
-      };
-      onUpdateCharacter(updatedCharacter);
-      // Reset flag after state propagates back
-      setTimeout(() => {
-        isInternalUpdateRef.current = false;
-      }, 200);
-    }, 500);
+  const saveCharacter = () => {
+    if (!character) return;
+    
+    const currentRelationships = character.relationships || [];
+    const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(currentRelationships);
+    
+    if (
+      name === character.name &&
+      description === character.description &&
+      biography === character.biography &&
+      characterArc === (character.characterArc || '') &&
+      relationshipsEqual &&
+      isLocked === (character.isLocked || false)
+    ) {
+      return;
+    }
 
-    return () => clearTimeout(timeoutId);
+    isInternalUpdateRef.current = true;
+    const updatedCharacter: Character = {
+      ...character,
+      name,
+      description,
+      biography,
+      characterArc,
+      relationships,
+      isLocked,
+      updatedAt: Date.now(),
+    };
+    onUpdateCharacter(updatedCharacter);
+    // Reset flag after state propagates back
+    setTimeout(() => {
+      isInternalUpdateRef.current = false;
+    }, 200);
+  };
+
+  useEffect(() => {
+    if (!character) return;
+    
+    const currentRelationships = character.relationships || [];
+    const relationshipsEqual = JSON.stringify(relationships) === JSON.stringify(currentRelationships);
+    
+    if (
+      name === character.name &&
+      description === character.description &&
+      biography === character.biography &&
+      characterArc === (character.characterArc || '') &&
+      relationshipsEqual &&
+      isLocked === (character.isLocked || false)
+    ) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    // Set new autosave timeout (20 minutes)
+    autosaveTimeoutRef.current = setTimeout(() => {
+      saveCharacter();
+    }, 20 * 60 * 1000); // 20 minutes
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, description, biography, characterArc, relationships, isLocked, character]);
+
+  // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (!isLocked && character) {
+          saveCharacter();
+          if (autosaveTimeoutRef.current) {
+            clearTimeout(autosaveTimeoutRef.current);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [character, isLocked, name, description, biography, characterArc, relationships]);
 
   const handleAddRelationship = () => {
     const newRelationship: CharacterRelationship = {
@@ -162,6 +228,22 @@ function CharacterEditor({ character, allCharacters, onUpdateCharacter, onStateC
           <div className="editor-header-content">
             <span className="character-type-badge">{typeLabels[character.type]}</span>
             <div className="editor-header-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  saveCharacter();
+                  // Clear autosave timeout since we just saved
+                  if (autosaveTimeoutRef.current) {
+                    clearTimeout(autosaveTimeoutRef.current);
+                  }
+                }}
+                className="save-btn"
+                title="Save now (Ctrl+S or Cmd+S)"
+                disabled={isLocked}
+              >
+                <Save size={18} />
+                <span>Save</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {

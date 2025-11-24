@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BookMetadata } from '../types';
-import { Image, X } from 'lucide-react';
+import { Image, X, Save } from 'lucide-react';
 import './BookMetadataEditor.css';
 
 interface BookMetadataEditorProps {
@@ -19,6 +19,7 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
   const synopsisTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastMetadataIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Only sync when metadata actually changes (not just reference)
   useEffect(() => {
@@ -53,6 +54,29 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     }
   }, [metadata, localMetadata]);
 
+  const saveMetadata = () => {
+    // Don't update if values haven't actually changed
+    const hasChanges = 
+      localMetadata.title !== metadata.title ||
+      localMetadata.author !== metadata.author ||
+      localMetadata.genre !== metadata.genre ||
+      localMetadata.synopsis !== metadata.synopsis ||
+      localMetadata.targetWordCount !== metadata.targetWordCount ||
+      JSON.stringify(localMetadata.themes) !== JSON.stringify(metadata.themes) ||
+      localMetadata.coverImage !== metadata.coverImage;
+
+    if (!hasChanges) {
+      return;
+    }
+
+    isInternalUpdateRef.current = true;
+    onUpdateMetadata(localMetadata);
+    // Reset flag after state propagates back
+    setTimeout(() => {
+      isInternalUpdateRef.current = false;
+    }, 200);
+  };
+
   useEffect(() => {
     // Don't update if values haven't actually changed
     const hasChanges = 
@@ -68,17 +92,38 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
       return;
     }
 
-    const timeoutId = setTimeout(() => {
-      isInternalUpdateRef.current = true;
-      onUpdateMetadata(localMetadata);
-      // Reset flag after state propagates back
-      setTimeout(() => {
-        isInternalUpdateRef.current = false;
-      }, 200);
-    }, 500);
+    // Clear existing timeout
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
 
-    return () => clearTimeout(timeoutId);
+    // Set new autosave timeout (20 minutes)
+    autosaveTimeoutRef.current = setTimeout(() => {
+      saveMetadata();
+    }, 20 * 60 * 1000); // 20 minutes
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
   }, [localMetadata, metadata, onUpdateMetadata]);
+
+  // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveMetadata();
+        if (autosaveTimeoutRef.current) {
+          clearTimeout(autosaveTimeoutRef.current);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [localMetadata, metadata]);
 
   const handleThemeChange = (value: string) => {
     const themes = value.split(',').map(t => t.trim()).filter(t => t);
@@ -122,6 +167,20 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     <div className="metadata-editor">
       <div className="metadata-header">
         <h2>Book Details</h2>
+        <button
+          type="button"
+          onClick={() => {
+            saveMetadata();
+            if (autosaveTimeoutRef.current) {
+              clearTimeout(autosaveTimeoutRef.current);
+            }
+          }}
+          className="save-btn"
+          title="Save now (Ctrl+S or Cmd+S)"
+        >
+          <Save size={18} />
+          <span>Save</span>
+        </button>
       </div>
 
       <div className="metadata-content">

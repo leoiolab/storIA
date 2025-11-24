@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, GitCompare } from 'lucide-react';
+import { Lock, Unlock, GitCompare, Save } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import ChapterVersionComparison from './ChapterVersionComparison';
@@ -21,6 +21,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastChapterIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -66,6 +67,29 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     }
   }, [currentState, onStateChange]);
 
+  const saveChapter = () => {
+    if (!chapter) return;
+    
+    // Don't update if values haven't actually changed
+    if (title === chapter.title && content === chapter.content && isLocked === (chapter.isLocked || false)) {
+      return;
+    }
+
+    isInternalUpdateRef.current = true;
+    const updatedChapter: Chapter = {
+      ...chapter,
+      title,
+      content,
+      isLocked,
+      updatedAt: Date.now(),
+    };
+    onUpdateChapter(updatedChapter);
+    // Reset flag after state propagates back
+    setTimeout(() => {
+      isInternalUpdateRef.current = false;
+    }, 200);
+  };
+
   useEffect(() => {
     if (!chapter) return;
     
@@ -74,24 +98,40 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       return;
     }
 
-    const timeoutId = setTimeout(() => {
-      isInternalUpdateRef.current = true;
-      const updatedChapter: Chapter = {
-        ...chapter,
-        title,
-        content,
-        isLocked,
-        updatedAt: Date.now(),
-      };
-      onUpdateChapter(updatedChapter);
-      // Reset flag after state propagates back
-      setTimeout(() => {
-        isInternalUpdateRef.current = false;
-      }, 200);
-    }, 500);
+    // Clear existing timeout
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
 
-    return () => clearTimeout(timeoutId);
+    // Set new autosave timeout (20 minutes)
+    autosaveTimeoutRef.current = setTimeout(() => {
+      saveChapter();
+    }, 20 * 60 * 1000); // 20 minutes
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
   }, [title, content, isLocked, chapter]);
+
+  // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (!isLocked && chapter) {
+          saveChapter();
+          if (autosaveTimeoutRef.current) {
+            clearTimeout(autosaveTimeoutRef.current);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [chapter, isLocked, title, content]);
 
   if (!chapter) {
     return (
@@ -151,6 +191,21 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               >
                 {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
                 <span>{isLocked ? 'Locked' : 'Unlocked'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  saveChapter();
+                  // Clear autosave timeout since we just saved
+                  if (autosaveTimeoutRef.current) {
+                    clearTimeout(autosaveTimeoutRef.current);
+                  }
+                }}
+                className="save-btn"
+                title="Save now (Ctrl+S or Cmd+S)"
+              >
+                <Save size={18} />
+                <span>Save</span>
               </button>
               <button
                 type="button"
