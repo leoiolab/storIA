@@ -66,77 +66,79 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update chapter
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findOne({ 
+    // First, get the current chapter to check for changes
+    const currentChapter = await Chapter.findOne({ 
       _id: req.params.id, 
       userId: req.userId 
     });
     
-    if (!chapter) {
+    if (!currentChapter) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
 
+    // Prepare update object
+    const updateData: any = {};
+    
+    // Check what changed
+    const contentChanged = req.body.content !== undefined && req.body.content !== currentChapter.content;
+    const titleChanged = req.body.title !== undefined && req.body.title !== currentChapter.title;
+    
     // Save version if content or title changed (before updating)
-    // Convert to strings for comparison to avoid type mismatch issues
-    const currentContent = String(chapter.content || '');
-    const currentTitle = String(chapter.title || '');
-    const newContent = req.body.content !== undefined ? String(req.body.content || '') : currentContent;
-    const newTitle = req.body.title !== undefined ? String(req.body.title || '') : currentTitle;
-    
-    const contentChanged = req.body.content !== undefined && newContent !== currentContent;
-    const titleChanged = req.body.title !== undefined && newTitle !== currentTitle;
-    
     if (contentChanged || titleChanged) {
       try {
-        if (!chapter.versions) {
-          chapter.versions = [];
-        }
+        const versions = currentChapter.versions || [];
         
         // Add current version BEFORE updating (save the old version)
-        // Schema requires both content and title to be strings
-        chapter.versions.push({
-          content: currentContent,
-          title: currentTitle,
+        versions.push({
+          content: String(currentChapter.content || ''),
+          title: String(currentChapter.title || ''),
           timestamp: new Date()
         });
         
         // Keep only last 50 versions
-        if (chapter.versions.length > 50) {
-          chapter.versions = chapter.versions.slice(-50);
+        if (versions.length > 50) {
+          versions.splice(0, versions.length - 50);
         }
         
-        // Mark versions as modified to ensure it's saved
-        chapter.markModified('versions');
+        updateData.versions = versions;
       } catch (versionError: any) {
-        console.error('Error saving version:', versionError);
-        console.error('Version error details:', versionError?.message);
-        // Don't fail the update if version saving fails - clear versions and continue
-        chapter.versions = [];
+        console.error('Error preparing version:', versionError);
+        // Continue without version saving if it fails
       }
     }
 
-    // Update chapter fields (ensure strings)
-    if (req.body.title !== undefined) chapter.title = String(req.body.title || '');
-    if (req.body.content !== undefined) chapter.content = String(req.body.content || '');
-    if (req.body.synopsis !== undefined) chapter.synopsis = req.body.synopsis;
-    if (req.body.notes !== undefined) chapter.notes = req.body.notes;
-    if (req.body.order !== undefined) chapter.order = req.body.order;
-    if (req.body.plotPoints !== undefined) chapter.plotPoints = req.body.plotPoints;
-    if (req.body.isLocked !== undefined) chapter.isLocked = req.body.isLocked;
+    // Update chapter fields
+    if (req.body.title !== undefined) updateData.title = String(req.body.title || '');
+    if (req.body.content !== undefined) updateData.content = String(req.body.content || '');
+    if (req.body.synopsis !== undefined) updateData.synopsis = req.body.synopsis;
+    if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+    if (req.body.order !== undefined) updateData.order = req.body.order;
+    if (req.body.plotPoints !== undefined) updateData.plotPoints = req.body.plotPoints;
+    if (req.body.isLocked !== undefined) updateData.isLocked = req.body.isLocked;
 
     // Update word count using the new content value
-    if (contentChanged) {
+    if (contentChanged && req.body.content !== undefined) {
       try {
-        const newContent = req.body.content || chapter.content || '';
-        chapter.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
+        const newContent = String(req.body.content || '');
+        updateData.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
       } catch (wordCountError: any) {
         console.error('Error calculating word count:', wordCountError);
-        // Set to 0 if calculation fails
-        chapter.wordCount = 0;
+        updateData.wordCount = 0;
       }
     }
     
-    await chapter.save();
-    res.json(chapter);
+    // Use findOneAndUpdate for atomic update
+    const updatedChapter = await Chapter.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedChapter) {
+      return res.status(404).json({ error: 'Chapter not found after update' });
+    }
+    
+    res.json(updatedChapter);
   } catch (error: any) {
     console.error('Update chapter error:', error);
     console.error('Error details:', error?.message || String(error));
@@ -196,5 +198,6 @@ router.post('/reorder', async (req: AuthRequest, res: Response) => {
 });
 
 export default router;
+
 
 
