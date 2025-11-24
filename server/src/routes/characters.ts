@@ -101,7 +101,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     if (typeof relationships === 'string') {
       try {
         relationships = JSON.parse(relationships);
-      } catch (e) {
+      } catch (e: any) {
         console.error('Failed to parse relationships string:', e);
         relationships = [];
       }
