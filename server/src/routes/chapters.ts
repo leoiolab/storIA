@@ -75,7 +75,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Chapter not found' });
     }
 
-    // Save version if content or title changed
+    // Save version if content or title changed (before updating)
     const contentChanged = req.body.content !== undefined && req.body.content !== chapter.content;
     const titleChanged = req.body.title !== undefined && req.body.title !== chapter.title;
     
@@ -84,10 +84,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         chapter.versions = [];
       }
       
-      // Add current version before updating
+      // Add current version BEFORE updating (save the old version)
       chapter.versions.push({
-        content: chapter.content,
-        title: chapter.title,
+        content: chapter.content || '',
+        title: chapter.title || '',
         timestamp: new Date()
       });
       
@@ -107,8 +107,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (req.body.isLocked !== undefined) chapter.isLocked = req.body.isLocked;
 
     // Update word count
-    if (contentChanged) {
+    if (contentChanged && chapter.content) {
       chapter.wordCount = chapter.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    }
+    
+    // Mark versions as modified to ensure it's saved
+    if (contentChanged || titleChanged) {
+      chapter.markModified('versions');
     }
     
     await chapter.save();
