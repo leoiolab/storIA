@@ -66,24 +66,52 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update chapter
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const chapter = await Chapter.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      {
-        title: req.body.title,
-        content: req.body.content,
-        synopsis: req.body.synopsis,
-        notes: req.body.notes,
-        order: req.body.order,
-        plotPoints: req.body.plotPoints,
-        isLocked: req.body.isLocked
-      },
-      { new: true, runValidators: true }
-    );
+    const chapter = await Chapter.findOne({ 
+      _id: req.params.id, 
+      userId: req.userId 
+    });
     
     if (!chapter) {
       return res.status(404).json({ error: 'Chapter not found' });
     }
+
+    // Save version if content or title changed
+    const contentChanged = req.body.content !== undefined && req.body.content !== chapter.content;
+    const titleChanged = req.body.title !== undefined && req.body.title !== chapter.title;
     
+    if (contentChanged || titleChanged) {
+      if (!chapter.versions) {
+        chapter.versions = [];
+      }
+      
+      // Add current version before updating
+      chapter.versions.push({
+        content: chapter.content,
+        title: chapter.title,
+        timestamp: new Date()
+      });
+      
+      // Keep only last 50 versions
+      if (chapter.versions.length > 50) {
+        chapter.versions = chapter.versions.slice(-50);
+      }
+    }
+
+    // Update chapter fields
+    if (req.body.title !== undefined) chapter.title = req.body.title;
+    if (req.body.content !== undefined) chapter.content = req.body.content;
+    if (req.body.synopsis !== undefined) chapter.synopsis = req.body.synopsis;
+    if (req.body.notes !== undefined) chapter.notes = req.body.notes;
+    if (req.body.order !== undefined) chapter.order = req.body.order;
+    if (req.body.plotPoints !== undefined) chapter.plotPoints = req.body.plotPoints;
+    if (req.body.isLocked !== undefined) chapter.isLocked = req.body.isLocked;
+
+    // Update word count
+    if (contentChanged) {
+      chapter.wordCount = chapter.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    }
+    
+    await chapter.save();
     res.json(chapter);
   } catch (error) {
     console.error('Update chapter error:', error);
