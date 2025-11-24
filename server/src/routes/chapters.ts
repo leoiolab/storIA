@@ -83,31 +83,40 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     const contentChanged = req.body.content !== undefined && req.body.content !== currentChapter.content;
     const titleChanged = req.body.title !== undefined && req.body.title !== currentChapter.title;
     
-    // Temporarily disable version saving to isolate the issue
-    // TODO: Re-enable version saving once the update works
     // Save version if content or title changed (before updating)
-    // if (contentChanged || titleChanged) {
-    //   try {
-    //     const versions = currentChapter.versions || [];
-    //     
-    //     // Add current version BEFORE updating (save the old version)
-    //     versions.push({
-    //       content: String(currentChapter.content || ''),
-    //       title: String(currentChapter.title || ''),
-    //       timestamp: new Date()
-    //     });
-    //     
-    //     // Keep only last 50 versions
-    //     if (versions.length > 50) {
-    //       versions.splice(0, versions.length - 50);
-    //     }
-    //     
-    //     updateData.versions = versions;
-    //   } catch (versionError: any) {
-    //     console.error('Error preparing version:', versionError);
-    //     // Continue without version saving if it fails
-    //   }
-    // }
+    if (contentChanged || titleChanged) {
+      try {
+        // Get existing versions or initialize empty array
+        const versions = Array.isArray(currentChapter.versions) 
+          ? [...currentChapter.versions] 
+          : [];
+        
+        // Only save version if current content/title exists (don't save empty versions)
+        const currentContent = String(currentChapter.content || '').trim();
+        const currentTitle = String(currentChapter.title || '').trim();
+        
+        if (currentContent || currentTitle) {
+          // Add current version BEFORE updating (save the old version)
+          versions.push({
+            content: currentContent,
+            title: currentTitle,
+            timestamp: new Date()
+          });
+          
+          // Keep only last 50 versions
+          if (versions.length > 50) {
+            versions.splice(0, versions.length - 50);
+          }
+          
+          updateData.versions = versions;
+          console.log('Version saved. Total versions:', versions.length);
+        }
+      } catch (versionError: any) {
+        console.error('Error preparing version:', versionError);
+        console.error('Version error details:', versionError?.message);
+        // Continue without version saving if it fails - don't block the update
+      }
+    }
 
     // Update chapter fields
     if (req.body.title !== undefined) updateData.title = String(req.body.title || '');
@@ -128,11 +137,6 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         updateData.wordCount = 0;
       }
     }
-    
-    // Log what we're about to update
-    console.log('Updating chapter:', req.params.id);
-    console.log('Update data keys:', Object.keys(updateData));
-    console.log('Content changed:', contentChanged, 'Title changed:', titleChanged);
     
     // Use findOneAndUpdate for atomic update
     const updatedChapter = await Chapter.findOneAndUpdate(
