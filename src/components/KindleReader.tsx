@@ -124,7 +124,7 @@ export function KindleReader({ book }: KindleReaderProps) {
 
   // Calculate progress
   const totalPages = useMemo(() => {
-    const previousChapterPages = chapters.reduce((sum, ch, idx) => {
+    const previousChapterPages = chapters.reduce((sum: number, ch: any, idx: number) => {
       if (idx < currentChapterIndex) {
         const words = ch.content.split(/\s+/).length;
         return sum + Math.ceil(words / wordsPerPage);
