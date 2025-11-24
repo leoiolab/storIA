@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Settings, BookOpen, X } from 'lucide-react';
+import { Book, Chapter } from '../types';
 import './KindleReader.css';
 
 interface KindleReaderProps {
@@ -35,7 +36,7 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
   }, [fontSize]);
 
-  const chapters = book.chapters.sort((a, b) => a.order - b.order);
+  const chapters = book.chapters.sort((a: Chapter, b: Chapter) => a.order - b.order);
   const currentChapter = chapters[currentChapterIndex];
 
   // Paginate content
