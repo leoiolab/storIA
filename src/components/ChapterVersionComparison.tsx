@@ -198,11 +198,11 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
     return [...chapter.versions].sort((a, b) => b.timestamp - a.timestamp);
   }, [chapter.versions]);
 
-  const diff = useMemo(() => {
+  const alignedDiff = useMemo(() => {
     if (!selectedVersion1 || !selectedVersion2) {
       return null;
     }
-    return computeDiff(selectedVersion1.content, selectedVersion2.content);
+    return computeAlignedDiff(selectedVersion1.content, selectedVersion2.content);
   }, [selectedVersion1, selectedVersion2]);
 
   if (!chapter.versions || chapter.versions.length === 0) {
