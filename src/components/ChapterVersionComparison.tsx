@@ -111,6 +111,43 @@ function computeLCS(arr1: string[], arr2: string[]): string[] {
   return lcs;
 }
 
+// Compute aligned word diff for side-by-side comparison
+function computeAlignedDiff(oldText: string, newText: string): {
+  oldWords: Array<{ text: string; type: 'same' | 'removed' }>;
+  newWords: Array<{ text: string; type: 'same' | 'added' }>;
+} {
+  // Split into words while preserving whitespace and newlines
+  const oldWords = oldText.split(/(\s+|\n)/);
+  const newWords = newText.split(/(\s+|\n)/);
+  
+  // Compute word-level diff
+  const wordDiff = computeWordDiff(oldText, newText);
+  
+  // Separate into old and new word arrays
+  const oldWordsResult: Array<{ text: string; type: 'same' | 'removed' }> = [];
+  const newWordsResult: Array<{ text: string; type: 'same' | 'added' }> = [];
+  
+  let oldWordIndex = 0;
+  let newWordIndex = 0;
+  
+  for (const diffItem of wordDiff) {
+    if (diffItem.type === 'same') {
+      oldWordsResult.push({ text: diffItem.text, type: 'same' });
+      newWordsResult.push({ text: diffItem.text, type: 'same' });
+      oldWordIndex++;
+      newWordIndex++;
+    } else if (diffItem.type === 'removed') {
+      oldWordsResult.push({ text: diffItem.text, type: 'removed' });
+      oldWordIndex++;
+    } else if (diffItem.type === 'added') {
+      newWordsResult.push({ text: diffItem.text, type: 'added' });
+      newWordIndex++;
+    }
+  }
+  
+  return { oldWords: oldWordsResult, newWords: newWordsResult };
+}
+
 // Simple diff algorithm to highlight differences (line-level for structure)
 function computeDiff(oldText: string, newText: string): Array<{ text: string; type: 'same' | 'added' | 'removed'; words?: Array<{ text: string; type: 'same' | 'added' | 'removed' }> }> {
   const oldLines = oldText.split('\n');
@@ -237,7 +274,7 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
             </div>
           </div>
 
-          {selectedVersion1 && selectedVersion2 && diff && (
+          {selectedVersion1 && selectedVersion2 && alignedDiff && (
             <div className="version-diff-view">
               <div className="diff-panel">
                 <div className="diff-panel-header">
@@ -247,33 +284,14 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
                   </span>
                 </div>
                 <div className="diff-content">
-                  {diff.map((item, index) => {
-                    if (item.type === 'removed' || item.type === 'same') {
-                      if (item.words) {
-                        // Render word-level diff
-                        return (
-                          <div key={index} className={`diff-line ${item.type === 'removed' ? 'removed' : 'same'}`}>
-                            {item.words.map((word, wordIndex) => (
-                              <span
-                                key={wordIndex}
-                                className={`diff-word ${word.type === 'removed' ? 'word-removed' : word.type === 'added' ? 'word-added' : ''}`}
-                              >
-                                {word.text}
-                              </span>
-                            ))}
-                          </div>
-                        );
-                      } else {
-                        // No word diff, render as-is
-                        return (
-                          <div key={index} className={`diff-line ${item.type === 'removed' ? 'removed' : 'same'}`}>
-                            {item.text}
-                          </div>
-                        );
-                      }
-                    }
-                    return null;
-                  })}
+                  {alignedDiff.oldWords.map((word, index) => (
+                    <span
+                      key={index}
+                      className={`diff-word ${word.type === 'removed' ? 'word-removed' : ''}`}
+                    >
+                      {word.text}
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -285,33 +303,14 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
                   </span>
                 </div>
                 <div className="diff-content">
-                  {diff.map((item, index) => {
-                    if (item.type === 'added' || item.type === 'same') {
-                      if (item.words) {
-                        // Render word-level diff
-                        return (
-                          <div key={index} className={`diff-line ${item.type === 'added' ? 'added' : 'same'}`}>
-                            {item.words.map((word, wordIndex) => (
-                              <span
-                                key={wordIndex}
-                                className={`diff-word ${word.type === 'added' ? 'word-added' : word.type === 'removed' ? 'word-removed' : ''}`}
-                              >
-                                {word.text}
-                              </span>
-                            ))}
-                          </div>
-                        );
-                      } else {
-                        // No word diff, render as-is
-                        return (
-                          <div key={index} className={`diff-line ${item.type === 'added' ? 'added' : 'same'}`}>
-                            {item.text}
-                          </div>
-                        );
-                      }
-                    }
-                    return null;
-                  })}
+                  {alignedDiff.newWords.map((word, index) => (
+                    <span
+                      key={index}
+                      className={`diff-word ${word.type === 'added' ? 'word-added' : ''}`}
+                    >
+                      {word.text}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
