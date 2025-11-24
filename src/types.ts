@@ -80,6 +80,7 @@ export interface BookMetadata {
   targetWordCount?: number;
   synopsis?: string;
   themes?: string[];
+  coverImage?: string; // Base64 encoded image or URL
 }
 
 export interface Book {

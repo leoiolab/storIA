@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BookMetadata } from '../types';
+import { Image, X } from 'lucide-react';
 import './BookMetadataEditor.css';
 
 interface BookMetadataEditorProps {
@@ -9,6 +10,7 @@ interface BookMetadataEditorProps {
 
 function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorProps) {
   const [localMetadata, setLocalMetadata] = useState(metadata);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalMetadata(metadata);
@@ -27,6 +29,39 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
     setLocalMetadata({ ...localMetadata, themes });
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result;
+      if (typeof result === 'string') {
+        setLocalMetadata({ ...localMetadata, coverImage: result });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setLocalMetadata({ ...localMetadata, coverImage: undefined });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="metadata-editor">
       <div className="metadata-header">
@@ -34,6 +69,42 @@ function BookMetadataEditor({ metadata, onUpdateMetadata }: BookMetadataEditorPr
       </div>
 
       <div className="metadata-content">
+        <div className="form-group">
+          <label htmlFor="coverImage">Book Cover</label>
+          <div className="cover-image-upload">
+            {localMetadata.coverImage ? (
+              <div className="cover-image-preview">
+                <img src={localMetadata.coverImage} alt="Book cover" />
+                <button
+                  type="button"
+                  className="remove-image-btn"
+                  onClick={handleRemoveImage}
+                  title="Remove cover image"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div
+                className="cover-image-placeholder"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Image size={32} />
+                <span>Click to upload cover image</span>
+                <small>JPG, PNG (max 5MB)</small>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              id="coverImage"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+            />
+          </div>
+        </div>
+
         <div className="form-group">
           <label htmlFor="title">Title</label>
           <input

@@ -670,7 +670,6 @@ function App() {
         books={appData.books}
         onSelectBook={handleSelectBook}
         onCreateBook={createNewBook}
-        onDeleteBook={handleDeleteBook}
         onLogout={handleLogout}
         userName={user?.name}
         isLoading={isLoadingBooks}
