@@ -134,7 +134,7 @@ export function KindleReader({ book }: KindleReaderProps) {
   }, [chapters, currentChapterIndex, currentPage, wordsPerPage]);
 
   const totalBookPages = useMemo(() => {
-    return chapters.reduce((sum, ch) => {
+    return chapters.reduce((sum: number, ch: any) => {
       const words = ch.content.split(/\s+/).length;
       return sum + Math.ceil(words / wordsPerPage);
     }, 0);

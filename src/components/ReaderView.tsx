@@ -20,7 +20,7 @@ export function ReaderView({ book }: ReaderViewProps) {
   const [lineHeight, setLineHeight] = useState<number>(1.6);
   const [showChapterList, setShowChapterList] = useState(false);
 
-  const chapters = book.chapters.sort((a, b) => a.order - b.order);
+  const chapters = book.chapters.sort((a: Chapter, b: Chapter) => a.order - b.order);
   const currentChapter = chapters[currentChapterIndex];
 
   const goToNextChapter = () => {
