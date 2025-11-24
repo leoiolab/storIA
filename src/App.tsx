@@ -260,34 +260,6 @@ function App() {
     setView('metadata');
   };
 
-  const handleDeleteBook = async (bookId: string) => {
-    if (!user) return;
-
-    setSaveStatus('saving');
-
-    try {
-      await CloudStorageService.deleteProject(bookId);
-
-      setAppData(prev => ({
-        ...prev,
-        books: prev.books.filter(book => book.id !== bookId),
-        currentBookId: prev.currentBookId === bookId ? null : prev.currentBookId,
-      }));
-
-      if (appData.currentBookId === bookId) {
-        setSelectedCharacter(null);
-        setSelectedChapter(null);
-        setView('metadata');
-      }
-
-      setSaveStatus('saved');
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error('Failed to delete book:', error);
-      setSaveStatus('error');
-    }
-  };
-
   const updateCurrentBook = (updater: (book: Book) => Book) => {
     if (!currentBook) return;
 
