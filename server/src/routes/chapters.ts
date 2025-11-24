@@ -80,20 +80,35 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     const titleChanged = req.body.title !== undefined && req.body.title !== chapter.title;
     
     if (contentChanged || titleChanged) {
-      if (!chapter.versions) {
-        chapter.versions = [];
-      }
-      
-      // Add current version BEFORE updating (save the old version)
-      chapter.versions.push({
-        content: chapter.content || '',
-        title: chapter.title || '',
-        timestamp: new Date()
-      });
-      
-      // Keep only last 50 versions
-      if (chapter.versions.length > 50) {
-        chapter.versions = chapter.versions.slice(-50);
+      try {
+        if (!chapter.versions) {
+          chapter.versions = [];
+        }
+        
+        // Ensure we have valid content and title for the version
+        const versionContent = typeof chapter.content === 'string' ? chapter.content : '';
+        const versionTitle = typeof chapter.title === 'string' ? chapter.title : '';
+        
+        // Only save version if we have actual content or title
+        if (versionContent || versionTitle) {
+          // Add current version BEFORE updating (save the old version)
+          chapter.versions.push({
+            content: versionContent,
+            title: versionTitle,
+            timestamp: new Date()
+          });
+          
+          // Keep only last 50 versions
+          if (chapter.versions.length > 50) {
+            chapter.versions = chapter.versions.slice(-50);
+          }
+          
+          // Mark versions as modified to ensure it's saved
+          chapter.markModified('versions');
+        }
+      } catch (versionError: any) {
+        console.error('Error saving version:', versionError);
+        // Don't fail the update if version saving fails
       }
     }
 
@@ -108,13 +123,14 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
     // Update word count using the new content value
     if (contentChanged) {
-      const newContent = req.body.content || chapter.content || '';
-      chapter.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
-    }
-    
-    // Mark versions as modified to ensure it's saved
-    if (contentChanged || titleChanged) {
-      chapter.markModified('versions');
+      try {
+        const newContent = req.body.content || chapter.content || '';
+        chapter.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
+      } catch (wordCountError: any) {
+        console.error('Error calculating word count:', wordCountError);
+        // Set to 0 if calculation fails
+        chapter.wordCount = 0;
+      }
     }
     
     await chapter.save();
