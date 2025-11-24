@@ -11,6 +11,7 @@ export interface IProject extends Document {
     synopsis?: string;
     themes?: string;
     targetWordCount?: number;
+    coverImage?: string;
   };
   settings?: {
     aiProvider?: 'openai' | 'anthropic';
@@ -40,7 +41,8 @@ const projectSchema = new Schema<IProject>({
     genre: { type: String },
     synopsis: { type: String },
     themes: { type: String },
-    targetWordCount: { type: Number }
+    targetWordCount: { type: Number },
+    coverImage: { type: String }
   },
   settings: {
     aiProvider: { 

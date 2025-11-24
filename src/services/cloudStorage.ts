@@ -384,6 +384,7 @@ export class CloudStorageService {
             ? String(project.metadata.themes).split(',').map((theme: string) => theme.trim()).filter(Boolean)
             : undefined,
         targetWordCount: project.metadata?.targetWordCount,
+        coverImage: project.metadata?.coverImage,
       },
       characters: [],
       chapters: [],
