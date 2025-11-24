@@ -122,6 +122,34 @@
   color: var(--color-text-heading);
 }
 
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.4);
+  width: 100%;
+}
+
+.sidebar-action-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-heading);
+}
+
+.sidebar-action-btn.settings-btn {
+  margin-bottom: 8px;
+}
+
 .logout-button {
   display: flex;
   align-items: center;
@@ -137,6 +165,7 @@
   transition: all 0.2s ease;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.6);
+  width: 100%;
 }
 
 .logout-button.mobile-top {

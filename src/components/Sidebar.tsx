@@ -1,4 +1,4 @@
-import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut } from 'lucide-react';
+import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut, Settings } from 'lucide-react';
 import { ReactNode } from 'react';
 import './Sidebar.css';
 
@@ -9,10 +9,11 @@ interface SidebarProps {
   onViewChange: (view: View) => void;
   children?: ReactNode;
   onLogout?: () => void;
+  onOpenSettings?: () => void;
   userName?: string | null;
 }
 
-function Sidebar({ view, onViewChange, children, onLogout, userName }: SidebarProps) {
+function Sidebar({ view, onViewChange, children, onLogout, onOpenSettings, userName }: SidebarProps) {
   const initials = userName
     ? userName
         .split(' ')
@@ -103,6 +104,12 @@ function Sidebar({ view, onViewChange, children, onLogout, userName }: SidebarPr
                 <span className="user-name">{userName}</span>
               </div>
             </div>
+          )}
+          {onOpenSettings && (
+            <button className="sidebar-action-btn settings-btn" onClick={onOpenSettings} title="Settings">
+              <Settings size={18} />
+              <span>Settings</span>
+            </button>
           )}
           <button className="logout-button" onClick={onLogout}>
             <LogOut size={18} />
