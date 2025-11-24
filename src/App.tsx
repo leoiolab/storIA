@@ -668,7 +668,7 @@ function App() {
             onClick={handleBackToSelection}
             title="Back to book selection"
           >
-            ← Select Book
+            Select Book
           </button>
         </div>
       </Sidebar>
