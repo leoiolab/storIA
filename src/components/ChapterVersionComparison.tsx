@@ -8,11 +8,114 @@ interface ChapterVersionComparisonProps {
   onClose: () => void;
 }
 
-// Simple diff algorithm to highlight differences
-function computeDiff(oldText: string, newText: string): Array<{ text: string; type: 'same' | 'added' | 'removed' }> {
+// Word-level diff algorithm to highlight only changed words
+function computeWordDiff(oldText: string, newText: string): Array<{ text: string; type: 'same' | 'added' | 'removed' }> {
+  // Split into words while preserving whitespace
+  const oldWords = oldText.split(/(\s+)/);
+  const newWords = newText.split(/(\s+)/);
+  
+  // Use LCS (Longest Common Subsequence) algorithm for word-level diff
+  const lcs = computeLCS(oldWords, newWords);
+  const diff: Array<{ text: string; type: 'same' | 'added' | 'removed' }> = [];
+  
+  let oldIndex = 0;
+  let newIndex = 0;
+  let lcsIndex = 0;
+  
+  while (oldIndex < oldWords.length || newIndex < newWords.length) {
+    // Check if current old word is in LCS
+    if (lcsIndex < lcs.length && oldIndex < oldWords.length && oldWords[oldIndex] === lcs[lcsIndex]) {
+      // Word is in both - it's the same
+      diff.push({ text: oldWords[oldIndex], type: 'same' });
+      oldIndex++;
+      newIndex++;
+      lcsIndex++;
+    } else if (oldIndex < oldWords.length && newIndex < newWords.length && oldWords[oldIndex] === newWords[newIndex]) {
+      // Words match but not in LCS order - treat as same
+      diff.push({ text: oldWords[oldIndex], type: 'same' });
+      oldIndex++;
+      newIndex++;
+    } else if (oldIndex >= oldWords.length) {
+      // Only new words remain
+      diff.push({ text: newWords[newIndex], type: 'added' });
+      newIndex++;
+    } else if (newIndex >= newWords.length) {
+      // Only old words remain
+      diff.push({ text: oldWords[oldIndex], type: 'removed' });
+      oldIndex++;
+    } else {
+      // Words differ - check which one to process
+      const oldWord = oldWords[oldIndex];
+      const newWord = newWords[newIndex];
+      
+      // Check if old word appears later in new text
+      const oldWordInNew = newWords.slice(newIndex).indexOf(oldWord);
+      // Check if new word appears later in old text
+      const newWordInOld = oldWords.slice(oldIndex).indexOf(newWord);
+      
+      if (oldWordInNew !== -1 && (newWordInOld === -1 || oldWordInNew < newWordInOld)) {
+        // Old word appears later - this is an addition
+        diff.push({ text: newWord, type: 'added' });
+        newIndex++;
+      } else if (newWordInOld !== -1) {
+        // New word appears later - this is a removal
+        diff.push({ text: oldWord, type: 'removed' });
+        oldIndex++;
+      } else {
+        // Both are unique - mark as changed
+        diff.push({ text: oldWord, type: 'removed' });
+        diff.push({ text: newWord, type: 'added' });
+        oldIndex++;
+        newIndex++;
+      }
+    }
+  }
+  
+  return diff;
+}
+
+// Compute Longest Common Subsequence for better diff matching
+function computeLCS(arr1: string[], arr2: string[]): string[] {
+  const m = arr1.length;
+  const n = arr2.length;
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  // Build LCS table
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (arr1[i - 1] === arr2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  
+  // Reconstruct LCS
+  const lcs: string[] = [];
+  let i = m;
+  let j = n;
+  
+  while (i > 0 && j > 0) {
+    if (arr1[i - 1] === arr2[j - 1]) {
+      lcs.unshift(arr1[i - 1]);
+      i--;
+      j--;
+    } else if (dp[i - 1][j] > dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  
+  return lcs;
+}
+
+// Simple diff algorithm to highlight differences (line-level for structure)
+function computeDiff(oldText: string, newText: string): Array<{ text: string; type: 'same' | 'added' | 'removed'; words?: Array<{ text: string; type: 'same' | 'added' | 'removed' }> }> {
   const oldLines = oldText.split('\n');
   const newLines = newText.split('\n');
-  const diff: Array<{ text: string; type: 'same' | 'added' | 'removed' }> = [];
+  const diff: Array<{ text: string; type: 'same' | 'added' | 'removed'; words?: Array<{ text: string; type: 'same' | 'added' | 'removed' }> }> = [];
   
   let oldIndex = 0;
   let newIndex = 0;
@@ -20,37 +123,26 @@ function computeDiff(oldText: string, newText: string): Array<{ text: string; ty
   while (oldIndex < oldLines.length || newIndex < newLines.length) {
     if (oldIndex >= oldLines.length) {
       // Only new lines remain
-      diff.push({ text: newLines[newIndex], type: 'added' });
+      const wordDiff = computeWordDiff('', newLines[newIndex]);
+      diff.push({ text: newLines[newIndex], type: 'added', words: wordDiff });
       newIndex++;
     } else if (newIndex >= newLines.length) {
       // Only old lines remain
-      diff.push({ text: oldLines[oldIndex], type: 'removed' });
+      const wordDiff = computeWordDiff(oldLines[oldIndex], '');
+      diff.push({ text: oldLines[oldIndex], type: 'removed', words: wordDiff });
       oldIndex++;
     } else if (oldLines[oldIndex] === newLines[newIndex]) {
-      // Lines match
+      // Lines match exactly
       diff.push({ text: oldLines[oldIndex], type: 'same' });
       oldIndex++;
       newIndex++;
     } else {
-      // Lines differ - check if it's an addition or removal
-      const nextOldMatch = newLines.findIndex((line, idx) => idx >= newIndex && line === oldLines[oldIndex]);
-      const nextNewMatch = oldLines.findIndex((line, idx) => idx >= oldIndex && line === newLines[newIndex]);
-      
-      if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
-        // Addition
-        diff.push({ text: newLines[newIndex], type: 'added' });
-        newIndex++;
-      } else if (nextNewMatch !== -1) {
-        // Removal
-        diff.push({ text: oldLines[oldIndex], type: 'removed' });
-        oldIndex++;
-      } else {
-        // Both changed
-        diff.push({ text: oldLines[oldIndex], type: 'removed' });
-        diff.push({ text: newLines[newIndex], type: 'added' });
-        oldIndex++;
-        newIndex++;
-      }
+      // Lines differ - do word-level diff
+      const wordDiff = computeWordDiff(oldLines[oldIndex], newLines[newIndex]);
+      diff.push({ text: oldLines[oldIndex], type: 'removed', words: wordDiff });
+      diff.push({ text: newLines[newIndex], type: 'added', words: wordDiff });
+      oldIndex++;
+      newIndex++;
     }
   }
   
@@ -155,14 +247,33 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
                   </span>
                 </div>
                 <div className="diff-content">
-                  {diff.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`diff-line ${item.type === 'removed' ? 'removed' : item.type === 'same' ? 'same' : ''}`}
-                    >
-                      {item.type === 'removed' || item.type === 'same' ? item.text : ''}
-                    </div>
-                  ))}
+                  {diff.map((item, index) => {
+                    if (item.type === 'removed' || item.type === 'same') {
+                      if (item.words) {
+                        // Render word-level diff
+                        return (
+                          <div key={index} className={`diff-line ${item.type === 'removed' ? 'removed' : 'same'}`}>
+                            {item.words.map((word, wordIndex) => (
+                              <span
+                                key={wordIndex}
+                                className={`diff-word ${word.type === 'removed' ? 'word-removed' : word.type === 'added' ? 'word-added' : ''}`}
+                              >
+                                {word.text}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        // No word diff, render as-is
+                        return (
+                          <div key={index} className={`diff-line ${item.type === 'removed' ? 'removed' : 'same'}`}>
+                            {item.text}
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
                 </div>
               </div>
 
@@ -174,14 +285,33 @@ function ChapterVersionComparison({ chapter, onClose }: ChapterVersionComparison
                   </span>
                 </div>
                 <div className="diff-content">
-                  {diff.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`diff-line ${item.type === 'added' ? 'added' : item.type === 'same' ? 'same' : ''}`}
-                    >
-                      {item.type === 'added' || item.type === 'same' ? item.text : ''}
-                    </div>
-                  ))}
+                  {diff.map((item, index) => {
+                    if (item.type === 'added' || item.type === 'same') {
+                      if (item.words) {
+                        // Render word-level diff
+                        return (
+                          <div key={index} className={`diff-line ${item.type === 'added' ? 'added' : 'same'}`}>
+                            {item.words.map((word, wordIndex) => (
+                              <span
+                                key={wordIndex}
+                                className={`diff-word ${word.type === 'added' ? 'word-added' : word.type === 'removed' ? 'word-removed' : ''}`}
+                              >
+                                {word.text}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        // No word diff, render as-is
+                        return (
+                          <div key={index} className={`diff-line ${item.type === 'added' ? 'added' : 'same'}`}>
+                            {item.text}
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
                 </div>
               </div>
             </div>
