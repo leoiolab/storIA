@@ -71,6 +71,31 @@
   cursor: not-allowed;
 }
 
+.version-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.version-btn:hover:not(:disabled) {
+  background: var(--color-surface-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.version-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .chapter-editor {

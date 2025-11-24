@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ChapterVersion {
+  content: string;
+  title: string;
+  timestamp: Date;
+}
+
 export interface IChapter extends Document {
   projectId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
@@ -14,6 +20,7 @@ export interface IChapter extends Document {
   }>;
   wordCount: number;
   isLocked?: boolean;
+  versions?: ChapterVersion[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,7 +72,21 @@ const chapterSchema = new Schema<IChapter>({
   isLocked: {
     type: Boolean,
     default: false
-  }
+  },
+  versions: [{
+    content: {
+      type: String,
+      required: true
+    },
+    title: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });
@@ -73,10 +94,29 @@ const chapterSchema = new Schema<IChapter>({
 // Compound index for project's chapters in order
 chapterSchema.index({ projectId: 1, order: 1 });
 
-// Update word count before saving
+// Update word count and save version before saving
 chapterSchema.pre('save', function(next) {
-  if (this.isModified('content')) {
+  if (this.isModified('content') || this.isModified('title')) {
     this.wordCount = this.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Save version if content or title changed
+    if (!this.isNew && (this.isModified('content') || this.isModified('title'))) {
+      if (!this.versions) {
+        this.versions = [];
+      }
+      
+      // Add current version before updating
+      this.versions.push({
+        content: this.content,
+        title: this.title,
+        timestamp: new Date()
+      });
+      
+      // Keep only last 50 versions
+      if (this.versions.length > 50) {
+        this.versions = this.versions.slice(-50);
+      }
+    }
   }
   next();
 });

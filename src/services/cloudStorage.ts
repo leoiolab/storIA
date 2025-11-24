@@ -427,6 +427,11 @@ export class CloudStorageService {
       plotPoints: CloudStorageService.mapPlotPointsFromAPI(chapter.plotPoints || [], chapter._id),
       wordCount: chapter.wordCount || 0,
       isLocked: chapter.isLocked || false,
+      versions: chapter.versions ? chapter.versions.map((v: any) => ({
+        content: v.content,
+        title: v.title,
+        timestamp: v.timestamp ? new Date(v.timestamp).getTime() : Date.now(),
+      })) : undefined,
       createdAt: chapter.createdAt ? new Date(chapter.createdAt).getTime() : Date.now(),
       updatedAt: chapter.updatedAt ? new Date(chapter.updatedAt).getTime() : Date.now(),
     };

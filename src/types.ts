@@ -27,6 +27,12 @@ export interface CharacterRelationship {
   description: string;
 }
 
+export interface ChapterVersion {
+  content: string;
+  title: string;
+  timestamp: number;
+}
+
 export interface Chapter {
   id: string;
   title: string;
@@ -37,6 +43,7 @@ export interface Chapter {
   wordCount?: number;
   plotPoints?: PlotPoint[];
   isLocked?: boolean;
+  versions?: ChapterVersion[];
   createdAt: number;
   updatedAt: number;
 }

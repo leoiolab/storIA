@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, GitCompare } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
+import ChapterVersionComparison from './ChapterVersionComparison';
 import './ChapterEditor.css';
 import type { EntityState } from './CharacterEditor';
 
@@ -15,6 +16,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isLocked, setIsLocked] = useState(false);
+  const [showVersionComparison, setShowVersionComparison] = useState(false);
   
   // Determine current state
   const getCurrentState = (): EntityState => {
@@ -122,6 +124,15 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
                 {isLocked ? <Lock size={18} /> : <Unlock size={18} />}
                 <span>{isLocked ? 'Locked' : 'Unlocked'}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setShowVersionComparison(true)}
+                className="version-btn"
+                title="Compare versions"
+              >
+                <GitCompare size={18} />
+                <span>Versions</span>
+              </button>
               <div className="chapter-stats">
                 <span className="stat-item">{wordCount} words</span>
                 <span className="stat-divider">·</span>
@@ -145,6 +156,12 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
           />
         </div>
       </div>
+      {showVersionComparison && chapter && (
+        <ChapterVersionComparison
+          chapter={chapter}
+          onClose={() => setShowVersionComparison(false)}
+        />
+      )}
     </ContextAwareEditor>
   );
 }

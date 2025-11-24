@@ -93,6 +93,42 @@
   flex-direction: column;
   gap: 16px;
   border: 2px solid var(--color-border);
+  position: relative;
+}
+
+.book-tile-header {
+  position: relative;
+}
+
+.book-delete-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.book-delete-btn:hover {
+  background: #fee;
+  border-color: var(--color-accent-strong);
+  color: var(--color-accent-strong);
+  transform: scale(1.1);
+}
+
+.book-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .book-tile:hover {

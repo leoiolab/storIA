@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Book as BookType } from '../types';
-import { Book, Plus, LogOut } from 'lucide-react';
+import { Book, Plus, LogOut, Trash2 } from 'lucide-react';
 import './BookSelectionScreen.css';
 
 interface BookSelectionScreenProps {
   books: BookType[];
   onSelectBook: (bookId: string) => void;
   onCreateBook: () => void;
+  onDeleteBook: (bookId: string) => void;
   onLogout: () => void;
   userName?: string | null;
   isLoading?: boolean;
@@ -16,10 +17,21 @@ function BookSelectionScreen({
   books,
   onSelectBook,
   onCreateBook,
+  onDeleteBook,
   onLogout,
   userName,
   isLoading = false,
 }: BookSelectionScreenProps) {
+  const [deletingBookId, setDeletingBookId] = useState<string | null>(null);
+
+  const handleDeleteClick = (e: React.MouseEvent, bookId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
+      setDeletingBookId(bookId);
+      onDeleteBook(bookId);
+      setTimeout(() => setDeletingBookId(null), 1000);
+    }
+  };
   const getBookInitials = (title: string) => {
     return title
       .split(' ')
@@ -81,13 +93,23 @@ function BookSelectionScreen({
               className="book-tile"
               onClick={() => onSelectBook(book.id)}
             >
-              <div
-                className="book-cover"
-                style={{ background: getBookColor(index) }}
-              >
-                <div className="book-cover-initials">
-                  {getBookInitials(book.metadata.title)}
+              <div className="book-tile-header">
+                <div
+                  className="book-cover"
+                  style={{ background: getBookColor(index) }}
+                >
+                  <div className="book-cover-initials">
+                    {getBookInitials(book.metadata.title)}
+                  </div>
                 </div>
+                <button
+                  className="book-delete-btn"
+                  onClick={(e) => handleDeleteClick(e, book.id)}
+                  title="Delete book"
+                  disabled={deletingBookId === book.id}
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
               <div className="book-tile-info">
                 <h3 className="book-tile-title">{book.metadata.title}</h3>
