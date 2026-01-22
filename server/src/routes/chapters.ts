@@ -1,4 +1,5 @@
 import express, { Response } from 'express';
+import mongoose, { Types } from 'mongoose';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import Chapter from '../models/Chapter';
 
@@ -10,9 +11,12 @@ router.use(authenticateToken);
 // Get all chapters for a project
 router.get('/project/:projectId', async (req: AuthRequest, res: Response) => {
   try {
+    const userObjectId = new Types.ObjectId(req.userId);
+    const projectObjectId = new Types.ObjectId(req.params.projectId);
+    
     const chapters = await Chapter.find({ 
-      projectId: req.params.projectId,
-      userId: req.userId 
+      projectId: projectObjectId,
+      userId: userObjectId 
     }).sort({ order: 1 });
     
     res.json(chapters);
@@ -25,9 +29,12 @@ router.get('/project/:projectId', async (req: AuthRequest, res: Response) => {
 // Get single chapter
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userObjectId = new Types.ObjectId(req.userId);
+    const chapterObjectId = new Types.ObjectId(req.params.id);
+    
     const chapter = await Chapter.findOne({ 
-      _id: req.params.id,
-      userId: req.userId 
+      _id: chapterObjectId,
+      userId: userObjectId 
     });
     
     if (!chapter) {
@@ -44,9 +51,12 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Create chapter
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
+    const userObjectId = new Types.ObjectId(req.userId);
+    const projectObjectId = new Types.ObjectId(req.body.projectId);
+    
     const chapter = new Chapter({
-      projectId: req.body.projectId,
-      userId: req.userId,
+      projectId: projectObjectId,
+      userId: userObjectId,
       title: req.body.title || 'Untitled Chapter',
       content: req.body.content || '',
       synopsis: req.body.synopsis,
@@ -66,10 +76,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update chapter
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userObjectId = new Types.ObjectId(req.userId);
+    const chapterObjectId = new Types.ObjectId(req.params.id);
+    
     // First, get the current chapter to check for changes
     const currentChapter = await Chapter.findOne({ 
-      _id: req.params.id, 
-      userId: req.userId 
+      _id: chapterObjectId, 
+      userId: userObjectId 
     });
     
     if (!currentChapter) {
@@ -185,7 +198,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     // Use findOneAndUpdate for atomic update
     try {
       const updatedChapter = await Chapter.findOneAndUpdate(
-        { _id: req.params.id, userId: req.userId },
+        { _id: chapterObjectId, userId: userObjectId },
         { $set: updateData },
         { new: true, runValidators: true }
       );
@@ -204,8 +217,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       try {
         // Try using save() method instead
         const chapter = await Chapter.findOne({ 
-          _id: req.params.id, 
-          userId: req.userId 
+          _id: chapterObjectId, 
+          userId: userObjectId 
         });
         
         if (!chapter) {
@@ -272,9 +285,12 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Delete chapter
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userObjectId = new Types.ObjectId(req.userId);
+    const chapterObjectId = new Types.ObjectId(req.params.id);
+    
     const chapter = await Chapter.findOneAndDelete({ 
-      _id: req.params.id,
-      userId: req.userId 
+      _id: chapterObjectId,
+      userId: userObjectId 
     });
     
     if (!chapter) {
@@ -291,19 +307,21 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 // Reorder chapters
 router.post('/reorder', async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId, chapterOrders } = req.body;
+    const userObjectId = new Types.ObjectId(req.userId);
+    const projectObjectId = new Types.ObjectId(req.body.projectId);
+    const { chapterOrders } = req.body;
     // chapterOrders should be array of { id, order }
     
     const updates = chapterOrders.map((item: { id: string, order: number }) =>
       Chapter.updateOne(
-        { _id: item.id, userId: req.userId, projectId },
+        { _id: new Types.ObjectId(item.id), userId: userObjectId, projectId: projectObjectId },
         { order: item.order }
       )
     );
     
     await Promise.all(updates);
     
-    const chapters = await Chapter.find({ projectId, userId: req.userId }).sort({ order: 1 });
+    const chapters = await Chapter.find({ projectId: projectObjectId, userId: userObjectId }).sort({ order: 1 });
     res.json(chapters);
   } catch (error) {
     console.error('Reorder chapters error:', error);
