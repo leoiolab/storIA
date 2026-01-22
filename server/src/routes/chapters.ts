@@ -87,9 +87,18 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (contentChanged || titleChanged) {
       try {
         // Get existing versions or initialize empty array
-        const versions = Array.isArray(currentChapter.versions) 
-          ? [...currentChapter.versions] 
-          : [];
+        let versions: Array<{ content: string; title: string; timestamp: Date }> = [];
+        
+        if (Array.isArray(currentChapter.versions)) {
+          // Safely copy existing versions, ensuring proper structure
+          versions = currentChapter.versions
+            .filter((v: any) => v && typeof v === 'object')
+            .map((v: any) => ({
+              content: String(v.content || ''),
+              title: String(v.title || ''),
+              timestamp: v.timestamp instanceof Date ? v.timestamp : new Date(v.timestamp || Date.now())
+            }));
+        }
         
         // Only save version if current content/title exists (don't save empty versions)
         const currentContent = String(currentChapter.content || '').trim();
@@ -105,7 +114,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           
           // Keep only last 50 versions
           if (versions.length > 50) {
-            versions.splice(0, versions.length - 50);
+            versions = versions.slice(-50);
           }
           
           updateData.versions = versions;
@@ -114,18 +123,43 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       } catch (versionError: any) {
         console.error('Error preparing version:', versionError);
         console.error('Version error details:', versionError?.message);
+        console.error('Version error stack:', versionError?.stack);
         // Continue without version saving if it fails - don't block the update
       }
     }
 
-    // Update chapter fields
-    if (req.body.title !== undefined) updateData.title = String(req.body.title || '');
-    if (req.body.content !== undefined) updateData.content = String(req.body.content || '');
-    if (req.body.synopsis !== undefined) updateData.synopsis = req.body.synopsis;
-    if (req.body.notes !== undefined) updateData.notes = req.body.notes;
-    if (req.body.order !== undefined) updateData.order = req.body.order;
-    if (req.body.plotPoints !== undefined) updateData.plotPoints = req.body.plotPoints;
-    if (req.body.isLocked !== undefined) updateData.isLocked = req.body.isLocked;
+    // Update chapter fields with defensive checks
+    if (req.body.title !== undefined) {
+      updateData.title = String(req.body.title || '').trim();
+      if (!updateData.title) {
+        updateData.title = 'Untitled Chapter'; // Ensure title is never empty
+      }
+    }
+    if (req.body.content !== undefined) {
+      updateData.content = String(req.body.content || '');
+    }
+    if (req.body.synopsis !== undefined) {
+      updateData.synopsis = req.body.synopsis ? String(req.body.synopsis) : undefined;
+    }
+    if (req.body.notes !== undefined) {
+      updateData.notes = req.body.notes ? String(req.body.notes) : undefined;
+    }
+    if (req.body.order !== undefined) {
+      updateData.order = Number(req.body.order) || 0;
+    }
+    if (req.body.plotPoints !== undefined) {
+      if (Array.isArray(req.body.plotPoints)) {
+        updateData.plotPoints = req.body.plotPoints.map((point: any) => ({
+          category: point.category || 'setup',
+          description: String(point.description || '')
+        }));
+      } else {
+        updateData.plotPoints = [];
+      }
+    }
+    if (req.body.isLocked !== undefined) {
+      updateData.isLocked = Boolean(req.body.isLocked);
+    }
 
     // Update word count using the new content value
     if (contentChanged && req.body.content !== undefined) {
@@ -138,15 +172,53 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
     }
     
+    // Log update data for debugging (without sensitive content)
+    console.log('Updating chapter:', {
+      id: req.params.id,
+      fields: Object.keys(updateData),
+      hasVersions: !!updateData.versions,
+      versionsCount: updateData.versions?.length || 0,
+      contentLength: updateData.content?.length || 0,
+      title: updateData.title?.substring(0, 50) || 'N/A'
+    });
+
     // Use findOneAndUpdate for atomic update
-    const updatedChapter = await Chapter.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-    
-    if (!updatedChapter) {
-      return res.status(404).json({ error: 'Chapter not found after update' });
+    try {
+      const updatedChapter = await Chapter.findOneAndUpdate(
+        { _id: req.params.id, userId: req.userId },
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+      
+      if (!updatedChapter) {
+        return res.status(404).json({ error: 'Chapter not found after update' });
+      }
+      
+      res.json(updatedChapter);
+    } catch (updateError: any) {
+      // If findOneAndUpdate fails, try a different approach
+      console.error('findOneAndUpdate failed, trying alternative approach:', updateError);
+      
+      // Try using save() method instead
+      const chapter = await Chapter.findOne({ 
+        _id: req.params.id, 
+        userId: req.userId 
+      });
+      
+      if (!chapter) {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      
+      // Apply updates manually
+      Object.assign(chapter, updateData);
+      
+      // Mark versions as modified if it was updated
+      if (updateData.versions) {
+        chapter.markModified('versions');
+      }
+      
+      const savedChapter = await chapter.save();
+      res.json(savedChapter);
     }
     
     res.json(updatedChapter);
@@ -158,9 +230,12 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (error?.errors) {
       console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
     }
+    if (error?.code) {
+      console.error('MongoDB error code:', error.code);
+    }
     res.status(500).json({ 
       error: 'Failed to update chapter', 
-      details: error?.message || String(error),
+      details: process.env.NODE_ENV === 'development' ? (error?.message || String(error)) : undefined,
       name: error?.name
     });
   }
