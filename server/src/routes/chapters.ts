@@ -194,36 +194,54 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         return res.status(404).json({ error: 'Chapter not found after update' });
       }
       
-      res.json(updatedChapter);
+      return res.json(updatedChapter);
     } catch (updateError: any) {
       // If findOneAndUpdate fails, try a different approach
       console.error('findOneAndUpdate failed, trying alternative approach:', updateError);
+      console.error('Update error details:', updateError?.message);
+      console.error('Update error stack:', updateError?.stack);
       
-      // Try using save() method instead
-      const chapter = await Chapter.findOne({ 
-        _id: req.params.id, 
-        userId: req.userId 
-      });
-      
-      if (!chapter) {
-        return res.status(404).json({ error: 'Chapter not found' });
+      try {
+        // Try using save() method instead
+        const chapter = await Chapter.findOne({ 
+          _id: req.params.id, 
+          userId: req.userId 
+        });
+        
+        if (!chapter) {
+          return res.status(404).json({ error: 'Chapter not found' });
+        }
+        
+        // Apply updates manually
+        Object.assign(chapter, updateData);
+        
+        // Mark versions as modified if it was updated
+        if (updateData.versions) {
+          chapter.markModified('versions');
+        }
+        
+        // Mark other modified fields
+        if (updateData.title) chapter.markModified('title');
+        if (updateData.content) chapter.markModified('content');
+        if (updateData.synopsis) chapter.markModified('synopsis');
+        if (updateData.notes) chapter.markModified('notes');
+        if (updateData.plotPoints) chapter.markModified('plotPoints');
+        
+        const savedChapter = await chapter.save();
+        return res.json(savedChapter);
+      } catch (saveError: any) {
+        console.error('Save() also failed:', saveError);
+        console.error('Save error details:', saveError?.message);
+        console.error('Save error stack:', saveError?.stack);
+        if (saveError?.errors) {
+          console.error('Save validation errors:', JSON.stringify(saveError.errors, null, 2));
+        }
+        // Re-throw to be caught by outer catch
+        throw saveError;
       }
-      
-      // Apply updates manually
-      Object.assign(chapter, updateData);
-      
-      // Mark versions as modified if it was updated
-      if (updateData.versions) {
-        chapter.markModified('versions');
-      }
-      
-      const savedChapter = await chapter.save();
-      res.json(savedChapter);
     }
-    
-    res.json(updatedChapter);
   } catch (error: any) {
-    console.error('Update chapter error:', error);
+    console.error('Update chapter error (outer catch):', error);
     console.error('Error details:', error?.message || String(error));
     console.error('Error name:', error?.name);
     console.error('Error stack:', error?.stack);
@@ -233,11 +251,21 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (error?.code) {
       console.error('MongoDB error code:', error.code);
     }
-    res.status(500).json({ 
-      error: 'Failed to update chapter', 
-      details: process.env.NODE_ENV === 'development' ? (error?.message || String(error)) : undefined,
-      name: error?.name
-    });
+    
+    // Send detailed error in development, generic in production
+    const errorResponse: any = { 
+      error: 'Failed to update chapter'
+    };
+    
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.details = error?.message || String(error);
+      errorResponse.name = error?.name;
+      if (error?.errors) {
+        errorResponse.validationErrors = error.errors;
+      }
+    }
+    
+    return res.status(500).json(errorResponse);
   }
 });
 

@@ -68,7 +68,18 @@ export class CloudStorageService {
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Request failed' }));
         console.error(`[CloudStorage] Request failed: ${response.status}`, error);
-        throw new Error(error.error || `Request failed with status ${response.status}`);
+        
+        // Include more details in error message for debugging
+        let errorMessage = error.error || `Request failed with status ${response.status}`;
+        if (error.details) {
+          errorMessage += `: ${error.details}`;
+        }
+        if (error.validationErrors) {
+          console.error('[CloudStorage] Validation errors:', error.validationErrors);
+          errorMessage += ' (Validation errors - check console for details)';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       return response.json();
