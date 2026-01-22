@@ -659,6 +659,7 @@ function App() {
         onViewChange={setView}
         onLogout={user ? handleLogout : undefined}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenExport={() => setShowExport(true)}
         userName={user?.name}
       >
         <div className="project-switcher-container">
