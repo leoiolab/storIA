@@ -255,9 +255,7 @@
   width: 100%;
 }
 
-.logout-button.mobile-top {
-  display: none; /* Hidden on desktop */
-}
+/* Mobile-top logout button removed - buttons now appear in footer on mobile */
 
 .logout-text {
   display: none;
@@ -288,20 +286,6 @@
     padding: 0 0 12px;
   }
 
-  .logout-button.mobile-top {
-    display: flex;
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-
-  .logout-button.mobile-top .logout-text {
-    display: inline;
-  }
-
-  .sidebar-footer .logout-button {
-    display: none; /* Hide bottom logout on mobile */
-  }
-
   .sidebar-nav {
     flex-direction: row;
     flex-wrap: wrap;
@@ -316,7 +300,9 @@
     justify-content: flex-start;
   }
 
+  /* Show footer buttons on mobile (export, settings, logout) at bottom */
   .sidebar-footer {
+    display: flex;
     margin-top: 16px;
     padding: 12px 0 0;
     flex-direction: row;

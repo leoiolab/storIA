@@ -655,7 +655,7 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
       <div className="agent-header">
         <div className="agent-title">
           <Sparkles size={18} />
-          <span>AI Writing Agent</span>
+          <span>ASI</span>
         </div>
         <div className="agent-actions">
           <button

@@ -526,7 +526,7 @@ function App() {
     }
   };
 
-  // Old AI Assistant handlers removed - now using unified AI Agent
+  // Old AI Assistant handlers removed - now using unified ASI
 
   const renderContent = () => {
     if (!currentBook) {
@@ -693,7 +693,7 @@ function App() {
         onClose={() => setShowExport(false)}
       />
 
-      {/* Cursor-Style AI Agent - Collapsible Side Panel */}
+      {/* Cursor-Style ASI - Collapsible Side Panel */}
       {currentBook && (
         <CursorAgent
           book={currentBook}
@@ -773,9 +773,9 @@ function App() {
         <button
           className="agent-toggle-btn"
           onClick={() => setShowAgent(true)}
-          title="Open AI Agent (⌘K)"
+          title="Open ASI (⌘K)"
         >
-          ✨ AI Agent
+          ✨ ASI
         </button>
       )}
     </div>

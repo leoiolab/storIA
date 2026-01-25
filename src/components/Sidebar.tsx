@@ -45,12 +45,6 @@ function Sidebar({ view, onViewChange, children, onLogout, onOpenSettings, onOpe
               {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
           )}
-          {onLogout && (
-            <button className="logout-button mobile-top" onClick={onLogout} title="Log out">
-              <LogOut size={18} />
-              {!isCollapsed && <span className="logout-text">Log out</span>}
-            </button>
-          )}
         </div>
       </div>
 
