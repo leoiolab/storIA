@@ -55,6 +55,20 @@ const buildContextSummary = (
     if (currentChapter.notes) {
       chapterSection.push(`Author Notes: ${currentChapter.notes}`);
     }
+    
+    // Include chapter content - prefer sections if available, otherwise use legacy content
+    if (currentChapter.sections && currentChapter.sections.length > 0) {
+      const sortedSections = [...currentChapter.sections].sort((a, b) => a.order - b.order);
+      const sectionsContent = sortedSections
+        .map((section, index) => {
+          return `Section ${index + 1}: "${section.title}"\n${section.content}`;
+        })
+        .join('\n\n---\n\n');
+      chapterSection.push(`Chapter Content (${sortedSections.length} section${sortedSections.length !== 1 ? 's' : ''}):\n\n${sectionsContent}`);
+    } else if (currentChapter.content) {
+      chapterSection.push(`Chapter Content:\n${currentChapter.content}`);
+    }
+    
     sections.push(chapterSection.join('\n'));
   } else if (activeView === 'chapters' && book.chapters.length) {
     const preview = book.chapters
@@ -329,19 +343,40 @@ IMPORTANT: Apply the requested modification to the character and return the COMP
 
 Make sure to include ALL fields in the JSON, even if they weren't modified.`;
       } else if (wantsMinorUpdate && currentChapter) {
+        const chapterContent = currentChapter.sections && currentChapter.sections.length > 0
+          ? currentChapter.sections
+              .sort((a, b) => a.order - b.order)
+              .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
+              .join('\n\n---\n\n')
+          : currentChapter.content || '';
+        
         enhancedPrompt += `\n\nCurrent chapter content:
-${currentChapter.content}
+${chapterContent}
 
 IMPORTANT: Provide the polished version of the chapter. Fix grammar, enhance prose, improve flow, refine descriptions. Keep the structure and plot intact.`;
       } else if (wantsMajorUpdate && currentChapter) {
+        const chapterContent = currentChapter.sections && currentChapter.sections.length > 0
+          ? currentChapter.sections
+              .sort((a, b) => a.order - b.order)
+              .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
+              .join('\n\n---\n\n')
+          : currentChapter.content || '';
+        
         enhancedPrompt += `\n\nCurrent chapter content:
-${currentChapter.content}
+${chapterContent}
 
 IMPORTANT: Provide a significantly improved version. Rewrite sections for better impact, develop scenes more deeply, add tension, enhance character moments, improve pacing.`;
       } else if (wantsModification && currentChapter && !wantsMinorUpdate && !wantsMajorUpdate) {
         // User wants to modify current chapter
+        const chapterContent = currentChapter.sections && currentChapter.sections.length > 0
+          ? currentChapter.sections
+              .sort((a, b) => a.order - b.order)
+              .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
+              .join('\n\n---\n\n')
+          : currentChapter.content || '';
+        
         enhancedPrompt += `\n\nCurrent chapter content:
-${currentChapter.content}
+${chapterContent}
 
 IMPORTANT: Apply the requested modification and provide the updated chapter content.`;
       } else if (wantsContent || wantsDialogue) {

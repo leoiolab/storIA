@@ -6,6 +6,16 @@ export interface ChapterVersion {
   timestamp: Date;
 }
 
+export interface ChapterSection {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  wordCount?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface IChapter extends Document {
   projectId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
@@ -21,6 +31,7 @@ export interface IChapter extends Document {
   wordCount: number;
   isLocked?: boolean;
   versions?: ChapterVersion[];
+  sections?: ChapterSection[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +95,36 @@ const chapterSchema = new Schema<IChapter>({
     },
     timestamp: {
       type: Date,
+      default: Date.now
+    }
+  }],
+  sections: [{
+    id: {
+      type: String,
+      required: true
+    },
+    title: {
+      type: String,
+      required: true
+    },
+    content: {
+      type: String,
+      default: ''
+    },
+    order: {
+      type: Number,
+      required: true
+    },
+    wordCount: {
+      type: Number,
+      default: 0
+    },
+    createdAt: {
+      type: Number,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Number,
       default: Date.now
     }
   }]

@@ -342,7 +342,8 @@ export class CloudStorageService {
         plotPoints: chapter.plotPoints?.map(point => ({
           category: point.category === 'other' ? 'setup' : point.category,
           description: point.description,
-        }))
+        })),
+        sections: chapter.sections,
       }),
     });
 
@@ -439,6 +440,15 @@ export class CloudStorageService {
       plotPoints: CloudStorageService.mapPlotPointsFromAPI(chapter.plotPoints || [], chapter._id),
       wordCount: chapter.wordCount || 0,
       isLocked: chapter.isLocked || false,
+      sections: chapter.sections ? chapter.sections.map((s: any) => ({
+        id: s.id || `section-${Date.now()}`,
+        title: s.title || 'Untitled Section',
+        content: s.content || '',
+        order: s.order || 0,
+        wordCount: s.wordCount || 0,
+        createdAt: s.createdAt || Date.now(),
+        updatedAt: s.updatedAt || Date.now(),
+      })) : undefined,
       versions: chapter.versions ? chapter.versions.map((v: any) => ({
         content: v.content,
         title: v.title,

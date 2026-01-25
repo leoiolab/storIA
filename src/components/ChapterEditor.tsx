@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, Unlock, GitCompare, Save } from 'lucide-react';
+import { Lock, Unlock, GitCompare, Save, FileText } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import ChapterVersionComparison from './ChapterVersionComparison';
+import ChapterSectionsEditor from './ChapterSectionsEditor';
 import './ChapterEditor.css';
 import type { EntityState } from './CharacterEditor';
 
@@ -17,6 +18,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const [content, setContent] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [showVersionComparison, setShowVersionComparison] = useState(false);
+  const [useSections, setUseSections] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastChapterIdRef = useRef<string | null>(null);
@@ -47,6 +49,10 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       setTitle(chapter.title);
       setContent(chapter.content);
       setIsLocked(chapter.isLocked || false);
+      // Enable sections if chapter has sections or content is long
+      const hasSections = !!(chapter.sections && chapter.sections.length > 0);
+      const isLongContent = !!(chapter.content && chapter.content.trim().split(/\s+/).length > 2000);
+      setUseSections(hasSections || isLongContent);
       lastChapterIdRef.current = chapter.id;
       lastSyncedChapterRef.current = chapter;
       isInternalUpdateRef.current = false;
@@ -217,6 +223,15 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               </button>
               <button
                 type="button"
+                onClick={() => setUseSections(!useSections)}
+                className={`toggle-btn ${useSections ? 'active' : ''}`}
+                title={useSections ? 'Switch to single editor' : 'Switch to sections'}
+              >
+                <FileText size={18} />
+                <span>{useSections ? 'Sections' : 'Single'}</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowVersionComparison(true)}
                 className="version-btn"
                 title="Compare versions"
@@ -238,14 +253,22 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         </div>
 
         <div className="editor-content">
-          <textarea
-            ref={contentTextareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Start writing your chapter..."
-            className="chapter-content-textarea"
-            disabled={isLocked}
-          />
+          {useSections ? (
+            <ChapterSectionsEditor
+              chapter={chapter}
+              onUpdateChapter={onUpdateChapter}
+              isLocked={isLocked}
+            />
+          ) : (
+            <textarea
+              ref={contentTextareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Start writing your chapter..."
+              className="chapter-content-textarea"
+              disabled={isLocked}
+            />
+          )}
         </div>
       </div>
       {showVersionComparison && chapter && (

@@ -95,6 +95,20 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     // Check what changed
     const contentChanged = req.body.content !== undefined && req.body.content !== currentChapter.content;
     const titleChanged = req.body.title !== undefined && req.body.title !== currentChapter.title;
+    const sectionsChanged = req.body.sections !== undefined;
+    
+    // Handle sections if provided
+    if (sectionsChanged && Array.isArray(req.body.sections)) {
+      updateData.sections = req.body.sections.map((s: any) => ({
+        id: s.id || `section-${Date.now()}`,
+        title: s.title || 'Untitled Section',
+        content: s.content || '',
+        order: s.order !== undefined ? Number(s.order) : 0,
+        wordCount: s.wordCount !== undefined ? Number(s.wordCount) : 0,
+        createdAt: s.createdAt || Date.now(),
+        updatedAt: s.updatedAt || Date.now(),
+      }));
+    }
     
     // Save version if content or title changed (before updating)
     if (contentChanged || titleChanged) {
@@ -180,8 +194,22 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       updateData.isLocked = Boolean(req.body.isLocked);
     }
 
-    // Update word count using the new content value
-    if (contentChanged && req.body.content !== undefined) {
+    // Update word count - prefer sections if available, otherwise use content
+    if (sectionsChanged && Array.isArray(req.body.sections)) {
+      try {
+        const totalWordCount = req.body.sections.reduce((sum: number, s: any) => {
+          const sectionContent = s.content || '';
+          const sectionWordCount = s.wordCount !== undefined 
+            ? Number(s.wordCount) 
+            : sectionContent.trim().split(/\s+/).filter((word: string) => word.length > 0).length;
+          return sum + sectionWordCount;
+        }, 0);
+        updateData.wordCount = totalWordCount;
+      } catch (wordCountError: any) {
+        console.error('Error calculating word count from sections:', wordCountError);
+        updateData.wordCount = 0;
+      }
+    } else if (contentChanged && req.body.content !== undefined) {
       try {
         const newContent = String(req.body.content || '');
         updateData.wordCount = newContent.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -260,6 +288,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         if (updateData.plotPoints !== undefined) chapter.plotPoints = updateData.plotPoints;
         if (updateData.isLocked !== undefined) chapter.isLocked = updateData.isLocked;
         if (updateData.wordCount !== undefined) chapter.wordCount = updateData.wordCount;
+        if (updateData.sections !== undefined) chapter.sections = updateData.sections;
         
         // Mark versions as modified if it was updated
         if (updateData.versions) {
@@ -273,6 +302,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         if (updateData.synopsis !== undefined) chapter.markModified('synopsis');
         if (updateData.notes !== undefined) chapter.markModified('notes');
         if (updateData.plotPoints !== undefined) chapter.markModified('plotPoints');
+        if (updateData.sections !== undefined) chapter.markModified('sections');
         
         // Validate before saving
         try {

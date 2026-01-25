@@ -33,10 +33,20 @@ export interface ChapterVersion {
   timestamp: number;
 }
 
-export interface Chapter {
+export interface ChapterSection {
   id: string;
   title: string;
   content: string;
+  order: number;
+  wordCount?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Chapter {
+  id: string;
+  title: string;
+  content: string; // Legacy field - kept for backward compatibility
   order: number;
   synopsis?: string;
   notes?: string;
@@ -44,6 +54,7 @@ export interface Chapter {
   plotPoints?: PlotPoint[];
   isLocked?: boolean;
   versions?: ChapterVersion[];
+  sections?: ChapterSection[]; // New: sections within chapter
   createdAt: number;
   updatedAt: number;
 }
