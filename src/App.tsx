@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import Sidebar, { View } from './components/Sidebar';
-import ProjectSwitcher from './components/ProjectSwitcher';
+import TopNavigation from './components/TopNavigation';
 import BookSelectionScreen from './components/BookSelectionScreen';
-import CharactersList from './components/CharactersList';
 import CharacterEditor, { EntityState } from './components/CharacterEditor';
-import ChaptersList from './components/ChaptersList';
 import ChapterEditor from './components/ChapterEditor';
 import BookMetadataEditor from './components/BookMetadataEditor';
 import RelationshipMap from './components/RelationshipMap';
@@ -47,6 +45,7 @@ function App() {
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
   const [characterState, setCharacterState] = useState<EntityState>('new');
   const [chapterState, setChapterState] = useState<EntityState>('new');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const deriveAIConfigFromSettings = useCallback(
     (settings?: ProjectSettings | null): AIConfig => ({
@@ -562,39 +561,21 @@ function App() {
 
       case 'characters':
         return (
-          <>
-            <CharactersList
-              characters={currentBook.characters}
-              selectedCharacter={selectedCharacter}
-              onSelectCharacter={setSelectedCharacter}
-              onAddCharacter={handleAddCharacter}
-              onDeleteCharacter={handleDeleteCharacter}
-            />
-            <CharacterEditor
-              character={selectedCharacter}
-              allCharacters={currentBook.characters}
-              onUpdateCharacter={handleUpdateCharacter}
-              onStateChange={setCharacterState}
-            />
-          </>
+          <CharacterEditor
+            character={selectedCharacter}
+            allCharacters={currentBook.characters}
+            onUpdateCharacter={handleUpdateCharacter}
+            onStateChange={setCharacterState}
+          />
         );
 
       case 'chapters':
         return (
-          <>
-            <ChaptersList
-              chapters={currentBook.chapters}
-              selectedChapter={selectedChapter}
-              onSelectChapter={setSelectedChapter}
-              onAddChapter={handleAddChapter}
-              onDeleteChapter={handleDeleteChapter}
-            />
-            <ChapterEditor
-              chapter={selectedChapter}
-              onUpdateChapter={handleUpdateChapter}
-              onStateChange={setChapterState}
-            />
-          </>
+          <ChapterEditor
+            chapter={selectedChapter}
+            onUpdateChapter={handleUpdateChapter}
+            onStateChange={setChapterState}
+          />
         );
 
       case 'relationships':
@@ -653,7 +634,7 @@ function App() {
   console.log('Rendering main app...');
 
   return (
-    <div className={`app ${showAgent ? 'agent-open' : ''}`}>
+    <div className={`app ${showAgent ? 'agent-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <Sidebar
         view={view}
         onViewChange={setView}
@@ -661,21 +642,41 @@ function App() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenExport={() => setShowExport(true)}
         userName={user?.name}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       >
-        <div className="project-switcher-container">
-          <SaveStatus status={saveStatus} lastSaved={lastSaved} />
-          <button 
-            className="back-to-selection-btn"
-            onClick={handleBackToSelection}
-            title="Back to book selection"
-          >
-            <BookOpen size={20} />
-            <span>Select Book</span>
-          </button>
-        </div>
+        {!sidebarCollapsed && (
+          <div className="project-switcher-container">
+            <SaveStatus status={saveStatus} lastSaved={lastSaved} />
+            <button 
+              className="back-to-selection-btn"
+              onClick={handleBackToSelection}
+              title="Back to book selection"
+            >
+              <BookOpen size={20} />
+              <span>Select Book</span>
+            </button>
+          </div>
+        )}
       </Sidebar>
 
       <div className="content">
+        {/* Top Navigation Bar - shown when in characters or chapters view */}
+        {(view === 'characters' || view === 'chapters') && currentBook && (
+          <TopNavigation
+            characters={currentBook.characters}
+            chapters={currentBook.chapters}
+            selectedCharacter={selectedCharacter}
+            selectedChapter={selectedChapter}
+            onSelectCharacter={setSelectedCharacter}
+            onSelectChapter={setSelectedChapter}
+            onAddCharacter={handleAddCharacter}
+            onAddChapter={handleAddChapter}
+            onDeleteCharacter={handleDeleteCharacter}
+            onDeleteChapter={handleDeleteChapter}
+            currentView={view}
+          />
+        )}
         {renderContent()}
       </div>
 

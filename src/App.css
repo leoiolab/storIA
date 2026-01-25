@@ -8,13 +8,32 @@
   overflow: hidden; /* Prevent app-level scrolling */
 }
 
+/* Adjust layout when sidebar is collapsed */
+.app.sidebar-collapsed {
+  /* Sidebar width changes handled in Sidebar.css */
+}
+
 .content {
   display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
   transition: margin-right 0.3s ease;
   min-height: 0; /* Allow flex child to shrink below content size */
   height: 100%; /* Ensure content takes full height */
+}
+
+/* Adjust content when sidebar is collapsed */
+.app.sidebar-collapsed .content {
+  margin-left: 0;
+}
+
+/* Content area that takes remaining space */
+.content > *:not(.top-navigation) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Adjust content when agent is open */
