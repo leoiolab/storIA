@@ -15,7 +15,15 @@ export function ReaderView({ book }: ReaderViewProps) {
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [theme, setTheme] = useState<Theme>('kindle');
-  const [fontSize, setFontSize] = useState<FontSize>('medium');
+  // Default to 'large' on mobile devices for better readability
+  const [fontSize, setFontSize] = useState<FontSize>(() => {
+    // Check if mobile device
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth <= 768;
+      return isMobile ? 'large' : 'medium';
+    }
+    return 'medium';
+  });
   const [fontFamily, setFontFamily] = useState<FontFamily>('serif');
   const [lineHeight, setLineHeight] = useState<number>(1.6);
   const [showChapterList, setShowChapterList] = useState(false);
