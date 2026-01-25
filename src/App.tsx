@@ -25,7 +25,7 @@ const createInitialAppData = (): AppData => ({
   aiConfig: {
     provider: 'none',
     apiKey: '',
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
   },
 });
 
@@ -51,7 +51,7 @@ function App() {
     (settings?: ProjectSettings | null): AIConfig => ({
       provider: settings?.aiProvider ?? 'none',
       apiKey: settings?.aiApiKey ?? '',
-      model: settings?.aiModel ?? 'gpt-4-turbo-preview',
+      model: settings?.aiModel ?? 'gpt-4o',
     }),
     []
   );
@@ -464,7 +464,7 @@ function App() {
     const sanitizedProvider = aiConfig.provider === 'none' ? undefined : aiConfig.provider;
     const sanitizedApiKey =
       sanitizedProvider && aiConfig.apiKey && aiConfig.apiKey.trim() ? aiConfig.apiKey.trim() : undefined;
-    const sanitizedModel = aiConfig.model || 'gpt-4-turbo-preview';
+    const sanitizedModel = aiConfig.model || 'gpt-4o';
 
     const nextAiConfig: AIConfig = {
       provider: aiConfig.provider,
@@ -706,6 +706,7 @@ function App() {
           setMessages={setAgentMessages}
           isOpen={showAgent}
           onClose={() => setShowAgent(false)}
+          aiConfig={appData.aiConfig}
           onInsertText={(text) => {
             // Insert into current chapter if editing
             if (selectedChapter) {

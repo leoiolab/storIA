@@ -20,7 +20,8 @@ export function isAIConfigured(): boolean {
 
 export async function chatWithAI(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  systemPrompt?: string
+  systemPrompt?: string,
+  model: string = 'gpt-4-turbo-preview'
 ): Promise<string> {
   if (!openaiClient) {
     throw new Error('AI not configured. Please add your API key in settings.');
@@ -28,7 +29,7 @@ export async function chatWithAI(
 
   try {
     const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: model,
       messages: [
         {
           role: 'system',
@@ -55,7 +56,8 @@ export async function chatWithAI(
 
 export async function generateCharacter(
   type: 'main' | 'secondary' | 'tertiary',
-  context?: string
+  context?: string,
+  model: string = 'gpt-4-turbo-preview'
 ): Promise<Partial<Character>> {
   if (!openaiClient) {
     throw new Error('AI not configured. Please add your API key in settings.');
@@ -74,7 +76,7 @@ Make the character compelling, unique, and well-developed.`;
 
   try {
     const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: model,
       messages: [
         {
           role: 'system',
@@ -103,7 +105,8 @@ export async function generateChapterContent(
   chapterTitle: string,
   previousContent?: string,
   characters?: Character[],
-  plotContext?: string
+  plotContext?: string,
+  model: string = 'gpt-4-turbo-preview'
 ): Promise<string> {
   if (!openaiClient) {
     throw new Error('AI not configured. Please add your API key in settings.');
@@ -122,7 +125,7 @@ Write 2-3 paragraphs of engaging narrative that advances the story. Focus on viv
 
   try {
     const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: model,
       messages: [
         {
           role: 'system',
@@ -144,7 +147,7 @@ Write 2-3 paragraphs of engaging narrative that advances the story. Focus on viv
   }
 }
 
-export async function improveText(text: string, instruction?: string): Promise<string> {
+export async function improveText(text: string, instruction?: string, model: string = 'gpt-4-turbo-preview'): Promise<string> {
   if (!openaiClient) {
     throw new Error('AI not configured. Please add your API key in settings.');
   }
@@ -155,7 +158,7 @@ export async function improveText(text: string, instruction?: string): Promise<s
 
   try {
     const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: model,
       messages: [
         {
           role: 'system',
@@ -179,7 +182,8 @@ export async function improveText(text: string, instruction?: string): Promise<s
 export async function generatePlotSuggestions(
   bookContext: string,
   characters: Character[],
-  existingChapters: Chapter[]
+  existingChapters: Chapter[],
+  model: string = 'gpt-4-turbo-preview'
 ): Promise<string[]> {
   if (!openaiClient) {
     throw new Error('AI not configured. Please add your API key in settings.');
@@ -202,7 +206,7 @@ Suggest 5 compelling plot developments or story directions. Return as a JSON arr
 
   try {
     const response = await openaiClient.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: model,
       messages: [
         {
           role: 'system',

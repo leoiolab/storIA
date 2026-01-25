@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen } from 'lucide-react';
-import { Book, Character, Chapter } from '../types';
+import { Book, Character, Chapter, AIConfig } from '../types';
 import type { View } from './Sidebar';
 import type { EntityState } from './CharacterEditor';
 import { chatWithAI, isAIConfigured } from '../services/ai';
@@ -120,6 +120,7 @@ interface CursorAgentProps {
   onUpdateChapter?: (content: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  aiConfig?: AIConfig;
 }
 
 function CursorAgent({
@@ -136,7 +137,8 @@ function CursorAgent({
   onUpdateCharacter,
   onUpdateChapter,
   isOpen,
-  onClose
+  onClose,
+  aiConfig
 }: CursorAgentProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -359,7 +361,8 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
       });
 
       // Call AI
-      const aiResponse = await chatWithAI(conversationHistory, systemPrompt);
+      const model = aiConfig?.model || 'gpt-4-turbo-preview';
+      const aiResponse = await chatWithAI(conversationHistory, systemPrompt, model);
       console.log('AI Response received:', aiResponse);
 
       // Parse response for actionable content

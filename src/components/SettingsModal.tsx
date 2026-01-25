@@ -51,7 +51,16 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
               <select
                 id="provider"
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as any)}
+                onChange={(e) => {
+                  const newProvider = e.target.value as 'openai' | 'anthropic' | 'none';
+                  setProvider(newProvider);
+                  // Reset model to default when provider changes
+                  if (newProvider === 'openai') {
+                    setModel('gpt-4o');
+                  } else if (newProvider === 'anthropic') {
+                    setModel('claude-3-5-sonnet-20241022');
+                  }
+                }}
                 className="select-field"
               >
                 <option value="none">None (Disabled)</option>
@@ -88,14 +97,51 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
 
                 <div className="form-group">
                   <label htmlFor="model">Model</label>
-                  <input
-                    id="model"
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder={provider === 'openai' ? 'gpt-4-turbo-preview' : 'claude-3-opus'}
-                    className="input-field"
-                  />
+                  {provider === 'openai' ? (
+                    <select
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      className="select-field"
+                    >
+                      <option value="gpt-4o">GPT-4o (Latest, Recommended)</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini (Fast & Efficient)</option>
+                      <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                      <option value="gpt-4">GPT-4</option>
+                      <option value="gpt-4-32k">GPT-4 32K (Long Context)</option>
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cost-Effective)</option>
+                      <option value="gpt-3.5-turbo-16k">GPT-3.5 Turbo 16K</option>
+                      <option value="gpt-4-turbo-preview">GPT-4 Turbo Preview (Legacy)</option>
+                    </select>
+                  ) : provider === 'anthropic' ? (
+                    <select
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      className="select-field"
+                    >
+                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Latest)</option>
+                      <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                      <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                      <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
+                    </select>
+                  ) : (
+                    <input
+                      id="model"
+                      type="text"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="Enter model name"
+                      className="input-field"
+                    />
+                  )}
+                  <p className="field-hint">
+                    {provider === 'openai' 
+                      ? 'Select the OpenAI model to use. GPT-4o offers the best balance of quality and speed.'
+                      : provider === 'anthropic'
+                      ? 'Select the Anthropic Claude model to use.'
+                      : 'Enter the model name for your provider.'}
+                  </p>
                 </div>
               </>
             )}
