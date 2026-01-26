@@ -118,7 +118,7 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
     const updatedChapter: Chapter = {
       ...chapter,
       sections: updatedSections,
-      content: combinedContent, // Keep for backward compatibility
+      content: combinedContent, // Keep for backward compatibility - always sync this
       wordCount: totalWordCount,
       updatedAt: Date.now(),
     };

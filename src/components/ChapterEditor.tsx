@@ -47,7 +47,14 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     // Only update if this is a different chapter
     if (chapter.id !== lastChapterIdRef.current) {
       setTitle(chapter.title);
-      setContent(chapter.content);
+      // If chapter has sections, use combined content from sections, otherwise use content
+      const chapterContent = chapter.sections && chapter.sections.length > 0
+        ? chapter.sections
+            .sort((a, b) => a.order - b.order)
+            .map(s => s.content)
+            .join('\n\n')
+        : chapter.content || '';
+      setContent(chapterContent);
       setIsLocked(chapter.isLocked || false);
       // Enable sections if chapter has sections or content is long
       const hasSections = !!(chapter.sections && chapter.sections.length > 0);
@@ -60,14 +67,30 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       // Only sync FROM props if the props actually changed (external update)
       // Don't sync if only local state changed (user typing)
       const lastSynced = lastSyncedChapterRef.current;
+      const sectionsChanged = lastSynced?.sections !== chapter.sections || 
+        (chapter.sections && lastSynced?.sections && 
+         JSON.stringify(chapter.sections) !== JSON.stringify(lastSynced.sections));
+      
       if (lastSynced && (
         lastSynced.title !== chapter.title ||
         lastSynced.content !== chapter.content ||
+        sectionsChanged ||
         (lastSynced.isLocked || false) !== (chapter.isLocked || false)
       )) {
         // Props changed externally (e.g., from autosave), sync them
         if (title !== chapter.title) setTitle(chapter.title);
-        if (content !== chapter.content) setContent(chapter.content);
+        
+        // If sections changed, update content from sections
+        if (sectionsChanged && chapter.sections && chapter.sections.length > 0) {
+          const combinedContent = chapter.sections
+            .sort((a, b) => a.order - b.order)
+            .map(s => s.content)
+            .join('\n\n');
+          if (content !== combinedContent) setContent(combinedContent);
+        } else if (content !== chapter.content) {
+          setContent(chapter.content);
+        }
+        
         if (isLocked !== (chapter.isLocked || false)) setIsLocked(chapter.isLocked || false);
         lastSyncedChapterRef.current = chapter;
       }
@@ -90,10 +113,38 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     }
 
     isInternalUpdateRef.current = true;
+    
+    // If chapter has sections, we need to update sections from the single content view
+    // Split content back into sections if switching from single to sections
+    let updatedSections = chapter.sections;
+    if (chapter.sections && chapter.sections.length > 0 && content !== chapter.content) {
+      // Content was edited in single view - need to update sections
+      // Try to preserve section structure by splitting content proportionally
+      const words = content.trim().split(/\s+/);
+      const totalWords = words.length;
+      const sectionCount = chapter.sections.length;
+      const wordsPerSection = Math.ceil(totalWords / sectionCount);
+      
+      updatedSections = chapter.sections.map((section, index) => {
+        const startIndex = index * wordsPerSection;
+        const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
+        const sectionWords = words.slice(startIndex, endIndex);
+        const sectionContent = sectionWords.join(' ');
+        
+        return {
+          ...section,
+          content: sectionContent,
+          wordCount: sectionWords.length,
+          updatedAt: Date.now(),
+        };
+      });
+    }
+    
     const updatedChapter: Chapter = {
       ...chapter,
       title,
       content,
+      sections: updatedSections,
       isLocked,
       updatedAt: Date.now(),
     };
@@ -223,7 +274,53 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               </button>
               <button
                 type="button"
-                onClick={() => setUseSections(!useSections)}
+                onClick={() => {
+                  // When switching views, sync the data first
+                  if (useSections && chapter.sections && chapter.sections.length > 0) {
+                    // Switching from sections to single - update content from sections
+                    const combinedContent = chapter.sections
+                      .sort((a, b) => a.order - b.order)
+                      .map(s => s.content)
+                      .join('\n\n');
+                    if (content !== combinedContent) {
+                      setContent(combinedContent);
+                    }
+                  } else if (!useSections && content && chapter.sections && chapter.sections.length > 0) {
+                    // Switching from single to sections - update sections from content
+                    // Split content back into sections proportionally
+                    const words = content.trim().split(/\s+/);
+                    const totalWords = words.length;
+                    const sectionCount = chapter.sections.length;
+                    const wordsPerSection = Math.ceil(totalWords / sectionCount);
+                    
+                    const updatedSections = chapter.sections.map((section, index) => {
+                      const startIndex = index * wordsPerSection;
+                      const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
+                      const sectionWords = words.slice(startIndex, endIndex);
+                      const sectionContent = sectionWords.join(' ');
+                      
+                      return {
+                        ...section,
+                        content: sectionContent,
+                        wordCount: sectionWords.length,
+                        updatedAt: Date.now(),
+                      };
+                    });
+                    
+                    // Save updated sections immediately
+                    isInternalUpdateRef.current = true;
+                    onUpdateChapter({
+                      ...chapter,
+                      sections: updatedSections,
+                      content: content,
+                      updatedAt: Date.now(),
+                    });
+                    setTimeout(() => {
+                      isInternalUpdateRef.current = false;
+                    }, 200);
+                  }
+                  setUseSections(!useSections);
+                }}
                 className={`toggle-btn ${useSections ? 'active' : ''}`}
                 title={useSections ? 'Switch to single editor' : 'Switch to sections'}
               >
