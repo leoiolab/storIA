@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Chapter, ChapterSection } from '../types';
 import './ChapterSectionsEditor.css';
 
@@ -11,9 +11,8 @@ interface ChapterSectionsEditorProps {
 
 function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSectionsEditorProps) {
   const [sections, setSections] = useState<ChapterSection[]>([]);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const sectionRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
+  const sectionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastChapterIdRef = useRef<string | null>(null);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -28,9 +27,8 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
       // Migrate legacy content to sections if needed
       if (chapter.sections && chapter.sections.length > 0) {
         setSections(chapter.sections);
-        // Expand first section by default
+        // Set first section as active by default
         if (chapter.sections.length > 0) {
-          setExpandedSections(new Set([chapter.sections[0].id]));
           setActiveSectionId(chapter.sections[0].id);
         }
       } else if (chapter.content && chapter.content.trim()) {
@@ -67,7 +65,6 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
         }
         
         setSections(migratedSections);
-        setExpandedSections(new Set([migratedSections[0].id]));
         setActiveSectionId(migratedSections[0].id);
         
         // Save migrated sections
@@ -88,14 +85,19 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
           updatedAt: Date.now(),
         };
         setSections([newSection]);
-        setExpandedSections(new Set([newSection.id]));
         setActiveSectionId(newSection.id);
       }
     } else if (chapter.sections) {
       // Chapter ID same, but sections might have been updated externally
       setSections(chapter.sections);
+      // Ensure active section still exists
+      if (activeSectionId && !chapter.sections.find(s => s.id === activeSectionId)) {
+        setActiveSectionId(chapter.sections[0]?.id || null);
+      } else if (!activeSectionId && chapter.sections.length > 0) {
+        setActiveSectionId(chapter.sections[0].id);
+      }
     }
-  }, [chapter, onUpdateChapter]);
+  }, [chapter, onUpdateChapter, activeSectionId]);
 
   const getWordCount = (text: string) => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -211,7 +213,6 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
     
     const updated = [...sections, newSection];
     setSections(updated);
-    setExpandedSections(prev => new Set([...prev, newSection.id]));
     setActiveSectionId(newSection.id);
     saveSections(updated);
   };
@@ -231,11 +232,6 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
         .map(s => s.order > section.order ? { ...s, order: s.order - 1 } : s);
       
       setSections(updated);
-      setExpandedSections(prev => {
-        const next = new Set(prev);
-        next.delete(sectionId);
-        return next;
-      });
       if (activeSectionId === sectionId) {
         setActiveSectionId(updated[0]?.id || null);
       }
@@ -243,113 +239,100 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
     }
   };
 
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) {
-        next.delete(sectionId);
-      } else {
-        next.add(sectionId);
-      }
-      return next;
-    });
-  };
-
   const sortedSections = [...sections].sort((a, b) => a.order - b.order);
   const totalWordCount = sections.reduce((sum, s) => sum + (s.wordCount || getWordCount(s.content)), 0);
+  const activeSection = sections.find(s => s.id === activeSectionId);
+  const activeSectionWordCount = activeSection ? (activeSection.wordCount || getWordCount(activeSection.content)) : 0;
+  const isOverLimit = activeSectionWordCount > 2000;
 
   return (
     <div className="chapter-sections-editor">
       <div className="sections-header">
-        <div className="sections-header-info">
-          <h3>Sections</h3>
-          <span className="sections-count">{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
-          <span className="sections-word-count">{totalWordCount.toLocaleString()} words total</span>
+        <div className="sections-header-left">
+          <div className="section-selector-group">
+            <label htmlFor="section-select" className="section-selector-label">
+              Section:
+            </label>
+            <select
+              id="section-select"
+              value={activeSectionId || ''}
+              onChange={(e) => setActiveSectionId(e.target.value)}
+              className="section-selector"
+              disabled={isLocked || sections.length === 0}
+            >
+              {sortedSections.map((section, index) => (
+                <option key={section.id} value={section.id}>
+                  Section {index + 1}: {section.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sections-header-info">
+            <span className="sections-count">{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
+            <span className="sections-word-count">{totalWordCount.toLocaleString()} words total</span>
+          </div>
         </div>
-        {!isLocked && (
-          <button
-            className="add-section-btn"
-            onClick={handleAddSection}
-            title="Add new section"
-          >
-            <Plus size={18} />
-            <span>Add Section</span>
-          </button>
-        )}
+        <div className="sections-header-actions">
+          {!isLocked && (
+            <>
+              <button
+                className="add-section-btn"
+                onClick={handleAddSection}
+                title="Add new section"
+              >
+                <Plus size={18} />
+                <span>Add Section</span>
+              </button>
+              {activeSection && sections.length > 1 && (
+                <button
+                  className="delete-section-btn"
+                  onClick={() => handleDeleteSection(activeSection.id)}
+                  title="Delete current section"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="sections-list">
-        {sortedSections.map((section, index) => {
-          const isExpanded = expandedSections.has(section.id);
-          const wordCount = section.wordCount || getWordCount(section.content);
-          const isOverLimit = wordCount > 2000;
-          
-          return (
-            <div
-              key={section.id}
-              className={`section-item ${isExpanded ? 'expanded' : ''} ${isOverLimit ? 'over-limit' : ''}`}
-            >
-              <div className="section-header">
-                <button
-                  className="section-toggle"
-                  onClick={() => toggleSection(section.id)}
-                  disabled={isLocked}
-                >
-                  {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
-                <div className="section-header-content">
-                  <input
-                    type="text"
-                    value={section.title}
-                    onChange={(e) => handleSectionUpdate(section.id, { title: e.target.value })}
-                    className="section-title-input"
-                    placeholder="Section title..."
-                    disabled={isLocked}
-                  />
-                  <div className="section-meta">
-                    <span className="section-number">Section {index + 1}</span>
-                    <span className="section-word-count">
-                      {wordCount.toLocaleString()} words
-                      {isOverLimit && <span className="warning-badge"> (Will auto-split)</span>}
-                    </span>
-                  </div>
-                </div>
-                {!isLocked && (
-                  <button
-                    className="section-delete-btn"
-                    onClick={() => handleDeleteSection(section.id)}
-                    title="Delete section"
-                    disabled={sections.length <= 1}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-              
-              {isExpanded && (
-                <div className="section-content">
-                  <textarea
-                    ref={(el) => {
-                      sectionRefs.current[section.id] = el;
-                    }}
-                    value={section.content}
-                    onChange={(e) => handleSectionUpdate(section.id, { content: e.target.value })}
-                    placeholder="Write your section content here..."
-                    className="section-content-textarea"
-                    disabled={isLocked}
-                    rows={15}
-                  />
-                  {isOverLimit && (
-                    <div className="section-warning">
-                      ⚠️ This section exceeds 2000 words and will be automatically split into multiple sections when saved.
-                    </div>
-                  )}
-                </div>
-              )}
+      {activeSection && (
+        <div className="section-editor-container">
+          <div className="section-editor-header">
+            <input
+              type="text"
+              value={activeSection.title}
+              onChange={(e) => handleSectionUpdate(activeSection.id, { title: e.target.value })}
+              className="section-title-input"
+              placeholder="Section title..."
+              disabled={isLocked}
+            />
+            <div className="section-editor-meta">
+              <span className="section-word-count-display">
+                {activeSectionWordCount.toLocaleString()} words
+                {isOverLimit && <span className="warning-badge"> (Will auto-split)</span>}
+              </span>
             </div>
-          );
-        })}
-      </div>
+          </div>
+          
+          <div className="section-editor-content">
+            <textarea
+              ref={sectionTextareaRef}
+              value={activeSection.content}
+              onChange={(e) => handleSectionUpdate(activeSection.id, { content: e.target.value })}
+              placeholder="Write your section content here..."
+              className="section-content-textarea"
+              disabled={isLocked}
+            />
+            {isOverLimit && (
+              <div className="section-warning">
+                ⚠️ This section exceeds 2000 words and will be automatically split into multiple sections when saved.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,19 +12,65 @@
   padding: 16px 24px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-soft);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sections-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.section-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-selector-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.section-selector {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-heading);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 200px;
+}
+
+.section-selector:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: #ffffff;
+}
+
+.section-selector:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.18);
+}
+
+.section-selector:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .sections-header-info {
   display: flex;
   align-items: center;
-  gap: 16px;
-}
-
-.sections-header-info h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-heading);
-  margin: 0;
+  gap: 12px;
 }
 
 .sections-count {
@@ -39,6 +85,12 @@
   font-size: 13px;
   color: var(--color-text-secondary);
   font-weight: 500;
+}
+
+.sections-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .add-section-btn {
@@ -62,82 +114,54 @@
   box-shadow: 0 6px 16px rgba(255, 122, 89, 0.4);
 }
 
-.sections-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  gap: 12px;
-  display: flex;
-  flex-direction: column;
-}
-
-.section-item {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  overflow: hidden;
-}
-
-.section-item:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 12px rgba(255, 122, 89, 0.15);
-}
-
-.section-item.over-limit {
-  border-color: var(--color-warning);
-  background: rgba(255, 193, 7, 0.05);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  cursor: pointer;
-}
-
-.section-toggle {
+.delete-section-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 6px;
+  padding: 10px 16px;
   background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-accent-strong);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
-.section-toggle:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.6);
-  border-color: var(--color-accent);
-  color: var(--color-accent-strong);
+.delete-section-btn:hover {
+  background: rgba(255, 122, 89, 0.1);
+  border-color: var(--color-accent-strong);
 }
 
-.section-toggle:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.section-header-content {
+.section-editor-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.section-editor-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 .section-title-input {
-  font-size: 16px;
+  flex: 1;
+  font-size: 18px;
   font-weight: 600;
   color: var(--color-text-heading);
   background: transparent;
   border: none;
-  padding: 4px 0;
-  width: 100%;
+  padding: 8px 0;
+  min-width: 0;
 }
 
 .section-title-input:focus {
@@ -150,66 +174,36 @@
   cursor: not-allowed;
 }
 
-.section-meta {
+.section-editor-meta {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
-  color: var(--color-text-muted);
 }
 
-.section-number {
-  padding: 2px 8px;
-  background: rgba(255, 122, 89, 0.1);
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.section-word-count {
+.section-word-count-display {
+  font-size: 13px;
   color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .warning-badge {
   color: var(--color-warning);
   font-weight: 600;
+  margin-left: 4px;
 }
 
-.section-delete-btn {
+.section-editor-content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.section-delete-btn:hover:not(:disabled) {
-  background: rgba(255, 122, 89, 0.1);
-  border-color: var(--color-accent-strong);
-  color: var(--color-accent-strong);
-}
-
-.section-delete-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.section-content {
-  padding: 0 16px 16px 16px;
-  border-top: 1px solid var(--color-border);
-  margin-top: 8px;
-  padding-top: 16px;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 24px;
 }
 
 .section-content-textarea {
+  flex: 1;
   width: 100%;
-  min-height: 300px;
+  min-height: 400px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--color-border);
@@ -217,7 +211,7 @@
   color: var(--color-text-primary);
   font-size: 15px;
   line-height: 1.6;
-  resize: vertical;
+  resize: none;
   transition: all 0.2s ease;
   font-family: inherit;
 }
@@ -251,8 +245,25 @@
   .sections-header {
     padding: 12px 16px;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 12px;
+  }
+
+  .sections-header-left {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-selector-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .section-selector {
+    width: 100%;
+    min-width: 0;
   }
 
   .sections-header-info {
@@ -260,31 +271,31 @@
     gap: 8px;
   }
 
-  .sections-header-info h3 {
-    font-size: 16px;
+  .sections-header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .add-section-btn {
+  .add-section-btn,
+  .delete-section-btn {
     width: 100%;
     justify-content: center;
   }
 
-  .sections-list {
-    padding: 12px;
-    gap: 8px;
+  .section-editor-header {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 
-  .section-header {
-    padding: 12px;
-    gap: 8px;
-  }
-
-  .section-content {
-    padding: 0 12px 12px 12px;
+  .section-editor-content {
+    padding: 16px;
   }
 
   .section-content-textarea {
-    min-height: 200px;
+    min-height: 300px;
     padding: 12px;
     font-size: 16px; /* Prevent iOS zoom */
   }
