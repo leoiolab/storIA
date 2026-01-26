@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Chapter, ChapterSection } from '../types';
 import './ChapterSectionsEditor.css';
@@ -9,7 +9,12 @@ interface ChapterSectionsEditorProps {
   isLocked: boolean;
 }
 
-function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSectionsEditorProps) {
+export interface ChapterSectionsEditorRef {
+  save: () => void;
+}
+
+const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectionsEditorProps>(
+  ({ chapter, onUpdateChapter, isLocked }, ref) => {
   const [sections, setSections] = useState<ChapterSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const sectionTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -127,6 +132,16 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
 
     onUpdateChapter(updatedChapter);
   }, [chapter, onUpdateChapter]);
+  
+  // Expose save function to parent via ref
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      // Save current sections state immediately
+      if (sections.length > 0) {
+        saveSections(sections);
+      }
+    }
+  }), [sections, saveSections]);
 
   const handleSectionUpdate = useCallback((sectionId: string, updates: Partial<ChapterSection>) => {
     setSections(prev => {
@@ -214,7 +229,7 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
     const updated = [...sections, newSection];
     setSections(updated);
     setActiveSectionId(newSection.id);
-    saveSections(updated);
+    saveSections(updated); // Save immediately when adding
   };
 
   const handleDeleteSection = (sectionId: string) => {
@@ -235,7 +250,7 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
       if (activeSectionId === sectionId) {
         setActiveSectionId(updated[0]?.id || null);
       }
-      saveSections(updated);
+      saveSections(updated); // Save immediately when deleting
     }
   };
 
@@ -332,10 +347,12 @@ function ChapterSectionsEditor({ chapter, onUpdateChapter, isLocked }: ChapterSe
             )}
           </div>
         </div>
-      )}
+      )      }
     </div>
   );
-}
+});
+
+ChapterSectionsEditor.displayName = 'ChapterSectionsEditor';
 
 export default ChapterSectionsEditor;
 

@@ -3,7 +3,7 @@ import { Lock, Unlock, GitCompare, Save, FileText } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import ChapterVersionComparison from './ChapterVersionComparison';
-import ChapterSectionsEditor from './ChapterSectionsEditor';
+import ChapterSectionsEditor, { ChapterSectionsEditorRef } from './ChapterSectionsEditor';
 import './ChapterEditor.css';
 import type { EntityState } from './CharacterEditor';
 
@@ -21,6 +21,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const [useSections, setUseSections] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sectionsEditorRef = useRef<ChapterSectionsEditorRef>(null);
   const lastChapterIdRef = useRef<string | null>(null);
   const isInternalUpdateRef = useRef(false);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,53 +108,79 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const saveChapter = useCallback(() => {
     if (!chapter) return;
     
-    // Don't update if values haven't actually changed
-    if (title === chapter.title && content === chapter.content && isLocked === (chapter.isLocked || false)) {
-      return;
-    }
-
     isInternalUpdateRef.current = true;
     
-    // If chapter has sections, we need to update sections from the single content view
-    // Split content back into sections if switching from single to sections
-    let updatedSections = chapter.sections;
-    if (chapter.sections && chapter.sections.length > 0 && content !== chapter.content) {
-      // Content was edited in single view - need to update sections
-      // Try to preserve section structure by splitting content proportionally
-      const words = content.trim().split(/\s+/);
-      const totalWords = words.length;
-      const sectionCount = chapter.sections.length;
-      const wordsPerSection = Math.ceil(totalWords / sectionCount);
+    // If in sections view, we need to get the latest sections from the chapter
+    // and ensure everything is synced
+    if (useSections && chapter.sections && chapter.sections.length > 0) {
+      // In sections view - ensure sections are saved with current title and lock status
+      const combinedContent = chapter.sections
+        .sort((a, b) => a.order - b.order)
+        .map(s => s.content)
+        .join('\n\n');
       
-      updatedSections = chapter.sections.map((section, index) => {
-        const startIndex = index * wordsPerSection;
-        const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
-        const sectionWords = words.slice(startIndex, endIndex);
-        const sectionContent = sectionWords.join(' ');
+      const totalWordCount = chapter.sections.reduce((sum, s) => {
+        return sum + (s.wordCount || s.content.trim().split(/\s+/).filter((w: string) => w.length > 0).length);
+      }, 0);
+      
+      const updatedChapter: Chapter = {
+        ...chapter,
+        title,
+        content: combinedContent, // Sync content from sections
+        sections: chapter.sections, // Keep current sections
+        wordCount: totalWordCount,
+        isLocked,
+        updatedAt: Date.now(),
+      };
+      onUpdateChapter(updatedChapter);
+    } else {
+      // In single view - check if values have changed
+      if (title === chapter.title && content === chapter.content && isLocked === (chapter.isLocked || false)) {
+        isInternalUpdateRef.current = false;
+        return;
+      }
+      
+      // If chapter has sections, we need to update sections from the single content view
+      let updatedSections = chapter.sections;
+      if (chapter.sections && chapter.sections.length > 0 && content !== chapter.content) {
+        // Content was edited in single view - need to update sections
+        // Try to preserve section structure by splitting content proportionally
+        const words = content.trim().split(/\s+/);
+        const totalWords = words.length;
+        const sectionCount = chapter.sections.length;
+        const wordsPerSection = Math.ceil(totalWords / sectionCount);
         
-        return {
-          ...section,
-          content: sectionContent,
-          wordCount: sectionWords.length,
-          updatedAt: Date.now(),
-        };
-      });
+        updatedSections = chapter.sections.map((section, index) => {
+          const startIndex = index * wordsPerSection;
+          const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
+          const sectionWords = words.slice(startIndex, endIndex);
+          const sectionContent = sectionWords.join(' ');
+          
+          return {
+            ...section,
+            content: sectionContent,
+            wordCount: sectionWords.length,
+            updatedAt: Date.now(),
+          };
+        });
+      }
+      
+      const updatedChapter: Chapter = {
+        ...chapter,
+        title,
+        content,
+        sections: updatedSections,
+        isLocked,
+        updatedAt: Date.now(),
+      };
+      onUpdateChapter(updatedChapter);
     }
     
-    const updatedChapter: Chapter = {
-      ...chapter,
-      title,
-      content,
-      sections: updatedSections,
-      isLocked,
-      updatedAt: Date.now(),
-    };
-    onUpdateChapter(updatedChapter);
     // Reset flag after state propagates back
     setTimeout(() => {
       isInternalUpdateRef.current = false;
     }, 200);
-  }, [chapter, title, content, isLocked, onUpdateChapter]);
+  }, [chapter, title, content, isLocked, useSections, onUpdateChapter]);
 
   useEffect(() => {
     if (!chapter) return;
@@ -186,7 +213,12 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (!isLocked && chapter) {
-          saveChapter();
+          // If in sections view, trigger save from sections editor
+          if (useSections && sectionsEditorRef.current) {
+            sectionsEditorRef.current.save();
+          } else {
+            saveChapter();
+          }
           if (autosaveTimeoutRef.current) {
             clearTimeout(autosaveTimeoutRef.current);
           }
@@ -196,7 +228,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chapter, isLocked, saveChapter]);
+  }, [chapter, isLocked, useSections, saveChapter]);
 
   if (!chapter) {
     return (
@@ -260,7 +292,12 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               <button
                 type="button"
                 onClick={() => {
-                  saveChapter();
+                  // If in sections view, trigger save from sections editor
+                  if (useSections && sectionsEditorRef.current) {
+                    sectionsEditorRef.current.save();
+                  } else {
+                    saveChapter();
+                  }
                   // Clear autosave timeout since we just saved
                   if (autosaveTimeoutRef.current) {
                     clearTimeout(autosaveTimeoutRef.current);
@@ -352,6 +389,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         <div className="editor-content">
           {useSections ? (
             <ChapterSectionsEditor
+              ref={sectionsEditorRef}
               chapter={chapter}
               onUpdateChapter={onUpdateChapter}
               isLocked={isLocked}
