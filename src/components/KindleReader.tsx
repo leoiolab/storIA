@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Settings, BookOpen, X } from 'lucide-react';
+import { Settings, BookOpen, X, ChevronDown } from 'lucide-react';
 import { Book, Chapter } from '../types';
 import './KindleReader.css';
 
@@ -15,11 +15,13 @@ export function KindleReader({ book }: KindleReaderProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showChapterDropdown, setShowChapterDropdown] = useState(false);
   const [theme, setTheme] = useState<Theme>('white');
   const [fontSize, setFontSize] = useState<FontSize>('md');
   const [lineSpacing, setLineSpacing] = useState<number>(1.6);
   const [margins, setMargins] = useState<number>(2);
   const contentRef = useRef<HTMLDivElement>(null);
+  const chapterDropdownRef = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState<string[]>([]);
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
@@ -47,8 +49,17 @@ export function KindleReader({ book }: KindleReaderProps) {
       const container = contentRef.current;
       if (!container) return;
 
-      const content = currentChapter.content;
-      // const paragraphs = content.split('\n\n').filter(p => p.trim());
+      // Use sections if available, otherwise use content
+      let content = currentChapter.content;
+      if (currentChapter.sections && currentChapter.sections.length > 0) {
+        // Combine sections without headers (section titles are for reference only)
+        content = currentChapter.sections
+          .sort((a, b) => a.order - b.order)
+          .map(s => s.content.trim())
+          .filter(Boolean)
+          .join('\n\n')
+          .trim();
+      }
       
       // Simple pagination - split into chunks
       const allWords = content.split(/\s+/);
@@ -143,6 +154,20 @@ export function KindleReader({ book }: KindleReaderProps) {
 
   const progressPercent = Math.round((totalPages / totalBookPages) * 100);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chapterDropdownRef.current && !chapterDropdownRef.current.contains(event.target as Node)) {
+        setShowChapterDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -155,6 +180,7 @@ export function KindleReader({ book }: KindleReaderProps) {
       } else if (e.key === 'Escape') {
         setShowMenu(false);
         setShowSettings(false);
+        setShowChapterDropdown(false);
       }
     };
 
@@ -184,6 +210,35 @@ export function KindleReader({ book }: KindleReaderProps) {
               <X size={20} />
             </button>
             <span className="menu-title">{book.metadata.title}</span>
+            <div className="chapter-dropdown-container" ref={chapterDropdownRef}>
+              <button 
+                className="chapter-dropdown-btn"
+                onClick={() => setShowChapterDropdown(!showChapterDropdown)}
+              >
+                <BookOpen size={16} />
+                <span>{currentChapter?.title || 'Select Chapter'}</span>
+                <ChevronDown size={16} className={showChapterDropdown ? 'rotated' : ''} />
+              </button>
+              {showChapterDropdown && (
+                <div className="chapter-dropdown-menu">
+                  {chapters.map((chapter, index) => (
+                    <button
+                      key={chapter.id}
+                      className={`chapter-dropdown-item ${index === currentChapterIndex ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrentChapterIndex(index);
+                        setCurrentPage(0);
+                        setShowChapterDropdown(false);
+                        setShowMenu(false);
+                      }}
+                    >
+                      <span className="chapter-number">Chapter {index + 1}</span>
+                      <span className="chapter-name">{chapter.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="menu-right">
             <button className="menu-btn" onClick={() => setShowSettings(!showSettings)}>

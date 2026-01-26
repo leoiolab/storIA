@@ -117,15 +117,12 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     }, 0);
 
     // Combine all sections for legacy content field (for backward compatibility)
-    // Format with section headers for better readability
+    // Section titles are for reference only - don't include them in the final text
     const sortedSections = updatedSections.sort((a, b) => a.order - b.order);
     const combinedContent = sortedSections
-      .map((s, index) => {
+      .map((s) => {
         if (!s.content || !s.content.trim()) return '';
-        const sectionHeader = s.title && s.title.trim() 
-          ? `\n\n[${s.title}]\n\n`
-          : `\n\n[Section ${index + 1}]\n\n`;
-        return sectionHeader + s.content.trim();
+        return s.content.trim();
       })
       .filter(Boolean)
       .join('\n\n')

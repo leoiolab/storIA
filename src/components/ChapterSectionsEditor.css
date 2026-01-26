@@ -199,6 +199,7 @@
   flex-direction: column;
   overflow: hidden;
   padding: 24px;
+  padding-bottom: 40px; /* Extra padding at bottom for scrolling */
   min-height: 0; /* Allow flex child to shrink */
 }
 
@@ -208,6 +209,7 @@
   min-height: 400px;
   max-height: 100%;
   padding: 20px;
+  padding-bottom: 60px; /* Extra padding at bottom to allow scrolling to end */
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -224,6 +226,7 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  box-sizing: border-box;
 }
 
 .section-content-textarea:focus {
