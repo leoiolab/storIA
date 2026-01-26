@@ -117,10 +117,19 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     }, 0);
 
     // Combine all sections for legacy content field (for backward compatibility)
-    const combinedContent = updatedSections
-      .sort((a, b) => a.order - b.order)
-      .map(s => s.content)
-      .join('\n\n');
+    // Format with section headers for better readability
+    const sortedSections = updatedSections.sort((a, b) => a.order - b.order);
+    const combinedContent = sortedSections
+      .map((s, index) => {
+        if (!s.content || !s.content.trim()) return '';
+        const sectionHeader = s.title && s.title.trim() 
+          ? `\n\n[${s.title}]\n\n`
+          : `\n\n[Section ${index + 1}]\n\n`;
+        return sectionHeader + s.content.trim();
+      })
+      .filter(Boolean)
+      .join('\n\n')
+      .trim();
 
     const updatedChapter: Chapter = {
       ...chapter,

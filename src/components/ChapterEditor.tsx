@@ -83,10 +83,18 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         
         // If sections changed, update content from sections
         if (sectionsChanged && chapter.sections && chapter.sections.length > 0) {
-          const combinedContent = chapter.sections
-            .sort((a, b) => a.order - b.order)
-            .map(s => s.content)
-            .join('\n\n');
+          const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
+          const combinedContent = sortedSections
+            .map((s, index) => {
+              if (!s.content || !s.content.trim()) return '';
+              const sectionHeader = s.title && s.title.trim() 
+                ? `\n\n[${s.title}]\n\n`
+                : `\n\n[Section ${index + 1}]\n\n`;
+              return sectionHeader + s.content.trim();
+            })
+            .filter(Boolean)
+            .join('\n\n')
+            .trim();
           if (content !== combinedContent) setContent(combinedContent);
         } else if (content !== chapter.content) {
           setContent(chapter.content);
@@ -114,10 +122,18 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     // and ensure everything is synced
     if (useSections && chapter.sections && chapter.sections.length > 0) {
       // In sections view - ensure sections are saved with current title and lock status
-      const combinedContent = chapter.sections
-        .sort((a, b) => a.order - b.order)
-        .map(s => s.content)
-        .join('\n\n');
+      const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
+      const combinedContent = sortedSections
+        .map((s, index) => {
+          if (!s.content || !s.content.trim()) return '';
+          const sectionHeader = s.title && s.title.trim() 
+            ? `\n\n[${s.title}]\n\n`
+            : `\n\n[Section ${index + 1}]\n\n`;
+          return sectionHeader + s.content.trim();
+        })
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
       
       const totalWordCount = chapter.sections.reduce((sum, s) => {
         return sum + (s.wordCount || s.content.trim().split(/\s+/).filter((w: string) => w.length > 0).length);
@@ -315,34 +331,89 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
                   // When switching views, sync the data first
                   if (useSections && chapter.sections && chapter.sections.length > 0) {
                     // Switching from sections to single - update content from sections
-                    const combinedContent = chapter.sections
-                      .sort((a, b) => a.order - b.order)
-                      .map(s => s.content)
-                      .join('\n\n');
+                    const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
+                    const combinedContent = sortedSections
+                      .map((s, index) => {
+                        const sectionHeader = s.title && s.title.trim() 
+                          ? `\n\n--- ${s.title} ---\n\n`
+                          : `\n\n--- Section ${index + 1} ---\n\n`;
+                        return sectionHeader + s.content.trim();
+                      })
+                      .join('\n\n')
+                      .trim();
                     if (content !== combinedContent) {
                       setContent(combinedContent);
                     }
                   } else if (!useSections && content && chapter.sections && chapter.sections.length > 0) {
                     // Switching from single to sections - update sections from content
-                    // Split content back into sections proportionally
-                    const words = content.trim().split(/\s+/);
-                    const totalWords = words.length;
-                    const sectionCount = chapter.sections.length;
-                    const wordsPerSection = Math.ceil(totalWords / sectionCount);
+                    // Try to split by section headers first, otherwise split proportionally
+                    const sectionHeaderPattern = /\n\n\[(.+?)\]\n\n/g;
+                    const foundSections: Array<{ content: string; title?: string }> = [];
+                    let match;
+                    const matches: Array<{ index: number; title: string; endIndex: number }> = [];
                     
-                    const updatedSections = chapter.sections.map((section, index) => {
-                      const startIndex = index * wordsPerSection;
-                      const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
-                      const sectionWords = words.slice(startIndex, endIndex);
-                      const sectionContent = sectionWords.join(' ');
+                    // Find all section headers
+                    while ((match = sectionHeaderPattern.exec(content)) !== null) {
+                      matches.push({
+                        index: match.index,
+                        title: match[1],
+                        endIndex: match.index + match[0].length
+                      });
+                    }
+                    
+                    // Extract sections based on headers
+                    if (matches.length > 0) {
+                      matches.forEach((headerMatch, idx) => {
+                        const startIndex = idx === 0 ? 0 : matches[idx - 1].endIndex;
+                        const endIndex = headerMatch.index;
+                        const sectionContent = content.substring(startIndex, endIndex).trim();
+                        if (sectionContent) {
+                          foundSections.push({ content: sectionContent, title: headerMatch.title });
+                        }
+                      });
+                      // Add last section
+                      const lastMatch = matches[matches.length - 1];
+                      const lastContent = content.substring(lastMatch.endIndex).trim();
+                      if (lastContent) {
+                        foundSections.push({ content: lastContent });
+                      }
+                    }
+                    
+                    // If headers found and count matches, use them; otherwise split proportionally
+                    let updatedSections;
+                    if (foundSections.length === chapter.sections.length) {
+                      updatedSections = chapter.sections.map((section, index) => {
+                        const foundSection = foundSections[index];
+                        return {
+                          ...section,
+                          content: foundSection.content,
+                          title: foundSection.title || section.title,
+                          wordCount: foundSection.content.trim().split(/\s+/).filter((w: string) => w.length > 0).length,
+                          updatedAt: Date.now(),
+                        };
+                      });
+                    } else {
+                      // Fallback to proportional split (remove headers first)
+                      const contentWithoutHeaders = content.replace(sectionHeaderPattern, '').replace(/\n\n\[.*?\]\n\n/g, '').trim();
+                      const words = contentWithoutHeaders.split(/\s+/);
+                      const totalWords = words.length;
+                      const sectionCount = chapter.sections.length;
+                      const wordsPerSection = Math.ceil(totalWords / sectionCount);
                       
-                      return {
-                        ...section,
-                        content: sectionContent,
-                        wordCount: sectionWords.length,
-                        updatedAt: Date.now(),
-                      };
-                    });
+                      updatedSections = chapter.sections.map((section, index) => {
+                        const startIndex = index * wordsPerSection;
+                        const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
+                        const sectionWords = words.slice(startIndex, endIndex);
+                        const sectionContent = sectionWords.join(' ');
+                        
+                        return {
+                          ...section,
+                          content: sectionContent,
+                          wordCount: sectionWords.length,
+                          updatedAt: Date.now(),
+                        };
+                      });
+                    }
                     
                     // Save updated sections immediately
                     isInternalUpdateRef.current = true;
