@@ -209,6 +209,9 @@
   overflow: hidden;
   padding: 32px;
   background: var(--color-surface);
+  min-height: 0; /* Allow flex child to shrink */
+  display: flex;
+  flex-direction: column;
 }
 
 .chapter-content-textarea {
