@@ -567,6 +567,27 @@ input[type="range"]::-webkit-slider-thumb {
     gap: 8px;
     text-align: center;
   }
+
+  .chapter-dropdown-menu {
+    min-width: 240px;
+    max-height: 300px;
+  }
+
+  .menu-title {
+    max-width: 150px;
+  }
+
+  .chapter-dropdown-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .chapter-dropdown-btn span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Improve readability on high DPI displays */
