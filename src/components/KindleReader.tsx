@@ -47,6 +47,7 @@ export function KindleReader({ book }: KindleReaderProps) {
   const wordMapRef = useRef<Map<number, string>>(new Map());
   const audioQueueRef = useRef<Blob[]>([]);
   const isProcessingQueueRef = useRef(false);
+  const shouldContinueProcessingRef = useRef(true);
 
   const wordsPerPage = useMemo(() => {
     switch (fontSize) {
@@ -511,6 +512,7 @@ export function KindleReader({ book }: KindleReaderProps) {
     setIsTTSPaused(false);
     setTtsError(null);
     audioQueueRef.current = [];
+    shouldContinueProcessingRef.current = true; // Reset flag
 
     // Use the validated voice ID for all processing
     const voiceIdForProcessing = validatedVoiceId;
@@ -531,40 +533,60 @@ export function KindleReader({ book }: KindleReaderProps) {
     
     // Process all sentences first, then play
     const audioBlobs: Blob[] = [];
-    for (const sentence of sentences) {
-      if (!isTTSPlaying || isTTSPaused) {
-        console.log('TTS stopped or paused during processing');
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i];
+      
+      // Check if we should continue (using ref to avoid state race conditions)
+      if (!shouldContinueProcessingRef.current) {
+        console.log('Processing stopped by user');
         break;
       }
       
-      console.log('Processing sentence:', sentence.substring(0, 50) + '...');
-      const blob = await processTextChunk(sentence, voiceIdForProcessing);
-      if (blob) {
-        audioBlobs.push(blob);
-        console.log('Added audio blob to queue, total:', audioBlobs.length);
-      } else {
-        console.warn('Failed to generate audio for sentence');
+      // Also check state as backup
+      if (!isTTSPlaying || isTTSPaused) {
+        console.log('TTS stopped or paused during processing, but continuing to finish current chunk');
+        // Don't break immediately - finish processing current chunk
+      }
+      
+      console.log(`Processing sentence ${i + 1}/${sentences.length}:`, sentence.substring(0, 50) + '...');
+      try {
+        const blob = await processTextChunk(sentence, voiceIdForProcessing);
+        if (blob && blob.size > 0) {
+          audioBlobs.push(blob);
+          console.log(`Added audio blob ${i + 1}, size: ${blob.size} bytes, total: ${audioBlobs.length}`);
+        } else {
+          console.warn(`Failed to generate audio for sentence ${i + 1} - blob is null or empty`);
+        }
+      } catch (error) {
+        console.error(`Error processing sentence ${i + 1}:`, error);
+        // Continue with next sentence even if one fails
       }
     }
     
     // Add all blobs to queue
     audioQueueRef.current = audioBlobs;
-    console.log('All audio blobs processed, queue length:', audioQueueRef.current.length);
+    console.log('All audio blobs processed, queue length:', audioQueueRef.current.length, 'blobs');
     
-    // Start playing the queue
-    if (audioQueueRef.current.length > 0 && isTTSPlaying && !isTTSPaused) {
-      console.log('Starting audio queue playback');
+    // Start playing the queue if we have audio
+    if (audioQueueRef.current.length > 0) {
+      // Re-check state before playing
+      if (!isTTSPlaying || isTTSPaused) {
+        console.log('TTS was stopped/paused, but we have audio. Resetting state and playing.');
+        setIsTTSPlaying(true);
+        setIsTTSPaused(false);
+      }
+      console.log('Starting audio queue playback with', audioQueueRef.current.length, 'chunks');
       playAudioQueue();
     } else {
-      console.warn('Not starting playback - queue empty or TTS stopped');
-      if (audioQueueRef.current.length === 0) {
-        setIsTTSPlaying(false);
-        setTtsError('No audio was generated. Please try again.');
-      }
+      console.error('No audio was generated - all chunks failed or were empty');
+      setIsTTSPlaying(false);
+      setTtsError('No audio was generated. Please check the console for errors and try again.');
     }
   }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
 
   const stopTTS = useCallback(() => {
+    console.log('Stopping TTS');
+    shouldContinueProcessingRef.current = false; // Signal to stop processing
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
