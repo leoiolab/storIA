@@ -64,11 +64,43 @@ export function KindleReader({ book }: KindleReaderProps) {
   const chapters = book.chapters.sort((a: Chapter, b: Chapter) => a.order - b.order);
   const currentChapter = chapters[currentChapterIndex];
 
+  // Check OPFS support
+  const checkOPFSSupport = useCallback(() => {
+    try {
+      // Check if navigator.storage exists
+      if (!navigator.storage) {
+        console.error('OPFS Check: navigator.storage is not available');
+        return false;
+      }
+      
+      // Check if getDirectory() method exists
+      if (typeof navigator.storage.getDirectory !== 'function') {
+        console.error('OPFS Check: navigator.storage.getDirectory() is not available');
+        return false;
+      }
+      
+      console.log('OPFS Check: ✅ OPFS is supported in this browser');
+      return true;
+    } catch (error) {
+      console.error('OPFS Check: Error checking OPFS support:', error);
+      return false;
+    }
+  }, []);
+
   // Initialize Piper TTS
   useEffect(() => {
     const initPiperTTS = async () => {
       setIsLoadingVoices(true);
       setTtsError(null);
+      
+      // Check OPFS support first
+      const opfsSupported = checkOPFSSupport();
+      if (!opfsSupported) {
+        setIsLoadingVoices(false);
+        setTtsError('Your browser does not support OPFS (Origin Private File System), which is required for Piper TTS. Please use Chrome, Edge, or a recent version of Firefox. Private/incognito mode may also disable OPFS.');
+        console.error('OPFS not supported - Piper TTS will not work');
+        return;
+      }
       
       try {
         console.log('Initializing Piper TTS...');
@@ -190,7 +222,7 @@ export function KindleReader({ book }: KindleReaderProps) {
     };
 
     initPiperTTS();
-  }, []);
+  }, [checkOPFSSupport]);
 
   // Get full chapter text for TTS
   const getChapterText = useMemo(() => {
