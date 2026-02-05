@@ -280,10 +280,20 @@ export function KindleReader({ book }: KindleReaderProps) {
       setTtsError(null);
 
       try {
-        await piperTTS.download(voiceId, (progress) => {
+        // Double-check voiceId before downloading
+        const trimmedVoiceId = voiceId.trim();
+        if (!trimmedVoiceId || trimmedVoiceId === 'undefined' || trimmedVoiceId.length === 0) {
+          console.error('CRITICAL: Invalid voiceId detected right before download:', voiceId, 'Type:', typeof voiceId);
+          setIsLoadingVoice(false);
+          setTtsError('Invalid voice ID. Please select a different voice.');
+          return false;
+        }
+
+        console.log('Downloading voice:', trimmedVoiceId);
+        await piperTTS.download(trimmedVoiceId, (progress) => {
           // Progress callback - could show progress UI if needed
           if (progress && progress.loaded && progress.total) {
-            console.log(`Downloading ${voiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+            console.log(`Downloading ${trimmedVoiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
           }
         });
 
@@ -383,19 +393,23 @@ export function KindleReader({ book }: KindleReaderProps) {
       return;
     }
 
-    // Validate selectedVoiceId
+    // Validate selectedVoiceId with detailed logging
+    console.log('startTTS called with selectedVoiceId:', selectedVoiceId, 'Type:', typeof selectedVoiceId);
     if (!selectedVoiceId || selectedVoiceId === 'undefined' || selectedVoiceId.trim().length === 0) {
       setTtsError('Please select a valid voice.');
-      console.error('Invalid selectedVoiceId:', selectedVoiceId);
+      console.error('Invalid selectedVoiceId in startTTS:', selectedVoiceId, 'Available voices:', availableVoices);
       return;
     }
 
     // Stop any existing speech
     stopTTS();
 
-    // Ensure voice is downloaded
-    const downloaded = await ensureVoiceDownloaded(selectedVoiceId);
+    // Ensure voice is downloaded (with validated ID)
+    const validatedVoiceId = selectedVoiceId.trim();
+    console.log('Calling ensureVoiceDownloaded with:', validatedVoiceId);
+    const downloaded = await ensureVoiceDownloaded(validatedVoiceId);
     if (!downloaded) {
+      console.error('Voice download failed for:', validatedVoiceId);
       return;
     }
 
@@ -403,6 +417,9 @@ export function KindleReader({ book }: KindleReaderProps) {
     setIsTTSPaused(false);
     setTtsError(null);
     audioQueueRef.current = [];
+
+    // Use the validated voice ID for all processing
+    const voiceIdForProcessing = validatedVoiceId;
 
     // Split text into chunks (Piper works better with smaller chunks)
     const chunks = getChapterText.split(/([.!?]\s+)/).filter(c => c.trim());
@@ -416,10 +433,11 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
 
     // Process sentences sequentially and add to queue
+    console.log('Processing text chunks with voice:', voiceIdForProcessing);
     for (const sentence of sentences) {
       if (!isTTSPlaying || isTTSPaused) break;
       
-      const blob = await processTextChunk(sentence, selectedVoiceId);
+      const blob = await processTextChunk(sentence, voiceIdForProcessing);
       if (blob) {
         audioQueueRef.current.push(blob);
         // Start playing if this is the first chunk
@@ -428,7 +446,7 @@ export function KindleReader({ book }: KindleReaderProps) {
         }
       }
     }
-  }, [getChapterText, selectedVoiceId, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
+  }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
 
   const stopTTS = useCallback(() => {
     if (audioRef.current) {
