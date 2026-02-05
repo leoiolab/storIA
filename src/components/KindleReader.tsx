@@ -161,9 +161,10 @@ export function KindleReader({ book }: KindleReaderProps) {
         
         // Set default voice if available
         if (voiceList.length > 0) {
-          const defaultVoice = voiceList.find(v => v && v.id && v.id.includes('en_US')) || voiceList[0];
-          if (defaultVoice && defaultVoice.id) {
-            setSelectedVoiceId(defaultVoice.id);
+          const defaultVoice = voiceList.find(v => v && v.id && v.id !== 'undefined' && v.id.trim().length > 0 && v.id.includes('en_US')) || 
+                               voiceList.find(v => v && v.id && v.id !== 'undefined' && v.id.trim().length > 0);
+          if (defaultVoice && defaultVoice.id && defaultVoice.id !== 'undefined' && defaultVoice.id.trim().length > 0) {
+            setSelectedVoiceId(defaultVoice.id.trim());
             console.log('Selected default voice:', defaultVoice);
           } else {
             console.warn('No valid default voice found');
@@ -260,6 +261,13 @@ export function KindleReader({ book }: KindleReaderProps) {
 
   // Piper TTS Functions
   const ensureVoiceDownloaded = useCallback(async (voiceId: string): Promise<boolean> => {
+    // Validate voiceId
+    if (!voiceId || voiceId === 'undefined' || voiceId.trim().length === 0) {
+      console.error('Invalid voiceId provided:', voiceId);
+      setTtsError('Invalid voice selected. Please select a valid voice.');
+      return false;
+    }
+
     try {
       // stored() returns a promise
       const stored = await piperTTS.stored();
@@ -305,6 +313,12 @@ export function KindleReader({ book }: KindleReaderProps) {
   }, []);
 
   const processTextChunk = useCallback(async (text: string, voiceId: string): Promise<Blob | null> => {
+    // Validate voiceId
+    if (!voiceId || voiceId === 'undefined' || voiceId.trim().length === 0) {
+      console.error('Invalid voiceId in processTextChunk:', voiceId);
+      return null;
+    }
+
     try {
       // Remove quotes for TTS (they're just formatting)
       const cleanText = text.replace(/[""]/g, '');
@@ -312,7 +326,7 @@ export function KindleReader({ book }: KindleReaderProps) {
 
       const wav = await piperTTS.predict({
         text: cleanText,
-        voiceId: voiceId,
+        voiceId: voiceId.trim(),
       });
       return wav;
     } catch (error) {
@@ -364,7 +378,15 @@ export function KindleReader({ book }: KindleReaderProps) {
   }, [isTTSPlaying, isTTSPaused, ttsSpeed]);
 
   const startTTS = useCallback(async () => {
-    if (!getChapterText || !selectedVoiceId) {
+    if (!getChapterText) {
+      setTtsError('No text to read.');
+      return;
+    }
+
+    // Validate selectedVoiceId
+    if (!selectedVoiceId || selectedVoiceId === 'undefined' || selectedVoiceId.trim().length === 0) {
+      setTtsError('Please select a valid voice.');
+      console.error('Invalid selectedVoiceId:', selectedVoiceId);
       return;
     }
 
@@ -705,20 +727,28 @@ export function KindleReader({ book }: KindleReaderProps) {
             ) : (
               <select
                 className="voice-selector"
-                value={selectedVoiceId}
+                value={selectedVoiceId || ''}
                 onChange={async (e) => {
                   const voiceId = e.target.value;
-                  setSelectedVoiceId(voiceId);
-                  if (isTTSPlaying) {
-                    stopTTS();
+                  if (voiceId && voiceId !== 'undefined' && voiceId.trim().length > 0) {
+                    console.log('Selected voice:', voiceId);
+                    setSelectedVoiceId(voiceId.trim());
+                    if (isTTSPlaying) {
+                      stopTTS();
+                    }
+                  } else {
+                    console.error('Invalid voice selected:', voiceId);
+                    setTtsError('Invalid voice selected. Please choose another voice.');
                   }
                 }}
               >
-                {availableVoices.map((voice) => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </option>
-                ))}
+                {availableVoices
+                  .filter(voice => voice && voice.id && voice.id !== 'undefined' && voice.id.trim().length > 0)
+                  .map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.name || voice.id}
+                    </option>
+                  ))}
               </select>
             )}
           </div>
