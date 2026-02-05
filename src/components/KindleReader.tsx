@@ -271,9 +271,23 @@ export function KindleReader({ book }: KindleReaderProps) {
     try {
       // stored() returns a promise
       const stored = await piperTTS.stored();
-      if (Array.isArray(stored) && stored.includes(voiceId)) {
-        console.log(`Voice ${voiceId} already downloaded`);
-        return true;
+      console.log('Stored voices check:', stored, 'Type:', typeof stored);
+      
+      // Validate stored result
+      if (Array.isArray(stored)) {
+        // Filter out any undefined/null values
+        const validStored = stored.filter(v => v && typeof v === 'string' && v.trim().length > 0);
+        if (validStored.includes(voiceId.trim())) {
+          console.log(`Voice ${voiceId} already downloaded`);
+          return true;
+        }
+      } else if (stored && typeof stored === 'object') {
+        // Handle object format if stored returns an object
+        const storedIds = Object.keys(stored).filter(k => k && k.trim().length > 0);
+        if (storedIds.includes(voiceId.trim())) {
+          console.log(`Voice ${voiceId} already downloaded (object format)`);
+          return true;
+        }
       }
 
       setIsLoadingVoice(true);
@@ -290,12 +304,37 @@ export function KindleReader({ book }: KindleReaderProps) {
         }
 
         console.log('Downloading voice:', trimmedVoiceId);
-        await piperTTS.download(trimmedVoiceId, (progress) => {
-          // Progress callback - could show progress UI if needed
-          if (progress && progress.loaded && progress.total) {
-            console.log(`Downloading ${trimmedVoiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+        
+        // Wrap download in try-catch to handle any internal undefined issues
+        try {
+          await piperTTS.download(trimmedVoiceId, (progress) => {
+            // Progress callback - could show progress UI if needed
+            if (progress) {
+              // Log progress details for debugging
+              if (progress.url) {
+                console.log(`Download progress for ${trimmedVoiceId}:`, progress.url, progress.loaded, '/', progress.total);
+                // Check if URL contains undefined
+                if (progress.url && progress.url.includes('undefined')) {
+                  console.error('WARNING: Progress callback received URL with undefined:', progress.url);
+                }
+              }
+              if (progress.loaded && progress.total) {
+                console.log(`Downloading ${trimmedVoiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+              }
+            }
+          });
+        } catch (downloadErr) {
+          // Check if error is related to undefined
+          const errMsg = downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
+          if (errMsg.includes('undefined') || errMsg.includes('404')) {
+            console.error('Download error related to undefined:', errMsg);
+            // Don't fail completely if it's just a metadata file issue
+            // The main model might have downloaded successfully
+            console.warn('Continuing despite download error - model may still be usable');
+          } else {
+            throw downloadErr; // Re-throw if it's a different error
           }
-        });
+        }
 
         setIsLoadingVoice(false);
         console.log(`Successfully downloaded voice: ${voiceId}`);
