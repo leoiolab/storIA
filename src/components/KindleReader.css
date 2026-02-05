@@ -299,6 +299,22 @@
   color: #999;
 }
 
+.tts-error p {
+  margin: 0;
+  color: #d32f2f;
+  font-size: 14px;
+}
+
+.voice-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
 .tts-btn.active {
   background: rgba(76, 175, 80, 0.2);
   color: #4CAF50;
@@ -307,6 +323,20 @@
 .theme-black .tts-btn.active {
   background: rgba(76, 175, 80, 0.3);
   color: #81C784;
+}
+
+/* Spinner animation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Word Highlighting */
@@ -485,24 +515,27 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
-  padding: 0;
+  padding: 2rem;
   margin: 0 auto;
   max-width: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .kindle-page {
-  max-width: 650px;
+  max-width: 900px;
   width: 100%;
-  height: 100%;
+  min-height: calc(100vh - 4rem);
   display: flex;
   flex-direction: column;
   position: relative;
   margin: 0 auto;
+  padding: 2rem;
+  background: transparent;
 }
 
 /* Font Sizes - Kindle-accurate */
@@ -515,32 +548,75 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Chapter Header */
 .chapter-header-kindle {
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid currentColor;
-  opacity: 0.2;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.3;
 }
 
 .chapter-number-kindle {
-  font-size: 0.75em;
+  font-size: 0.8em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  opacity: 0.5;
-  margin-bottom: 0.5rem;
+  letter-spacing: 3px;
+  opacity: 0.6;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
 }
 
 .chapter-title-kindle {
-  font-size: 1.5em;
+  font-size: 2em;
   font-weight: 600;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.2;
   font-family: 'Bookerly', Georgia, serif;
+  letter-spacing: -0.5px;
 }
 
 /* Page Content */
 .page-text {
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
+  margin-bottom: 2rem;
+  line-height: 1.8;
+}
+
+.narrative-text {
+  display: inline;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+.dialogue-text {
+  display: inline;
+  font-style: italic;
+  color: inherit;
+  opacity: 0.9;
+  font-weight: 500;
+  margin: 0 0.2em;
+  text-indent: 0;
+  position: relative;
+  /* Style the quotes within the text */
+}
+
+.dialogue-text {
+  /* Enhanced styling for dialogue - quotes are already in text */
+  font-family: 'Bookerly', Georgia, serif;
+  letter-spacing: 0.02em;
+}
+
+/* Dialogue styling per theme */
+.theme-white .dialogue-text {
+  color: #1a5490;
+}
+
+.theme-sepia .dialogue-text {
+  color: #8b4513;
+}
+
+.theme-black .dialogue-text {
+  color: #a0d4ff;
+  opacity: 1;
 }
 
 .kindle-paragraph {
@@ -690,6 +766,15 @@ input[type="range"]::-webkit-slider-thumb {
 
   .kindle-page {
     max-width: 100%;
+    padding: 1rem;
+  }
+  
+  .page-text {
+    line-height: 1.7;
+  }
+  
+  .dialogue-text {
+    font-size: 1.05em;
   }
 
   .tap-hint {

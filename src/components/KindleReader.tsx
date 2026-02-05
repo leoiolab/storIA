@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Settings, BookOpen, X, ChevronDown, Play, Pause, Volume2 } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Settings, BookOpen, X, ChevronDown, Play, Pause, Volume2, Loader2 } from 'lucide-react';
 import { Book, Chapter } from '../types';
+import * as piperTTS from '@mintplex-labs/piper-tts-web';
+import { formatTextWithDialogue } from '../utils/textFormatting';
 import './KindleReader.css';
 
 interface KindleReaderProps {
@@ -9,6 +11,11 @@ interface KindleReaderProps {
 
 type Theme = 'white' | 'sepia' | 'black';
 type FontSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+
+interface PiperVoice {
+  id: string;
+  name: string;
+}
 
 export function KindleReader({ book }: KindleReaderProps) {
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
@@ -27,16 +34,19 @@ export function KindleReader({ book }: KindleReaderProps) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
   
-  // TTS State
+  // Piper TTS State
   const [isTTSPlaying, setIsTTSPlaying] = useState(false);
+  const [isTTSPaused, setIsTTSPaused] = useState(false);
   const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const currentWordRef = useRef<HTMLSpanElement | null>(null);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('en_US-lessac-medium');
+  const [availableVoices, setAvailableVoices] = useState<PiperVoice[]>([]);
+  const [isLoadingVoice, setIsLoadingVoice] = useState(false);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const wordMapRef = useRef<Map<number, string>>(new Map());
+  const audioQueueRef = useRef<Blob[]>([]);
+  const isProcessingQueueRef = useRef(false);
 
   const wordsPerPage = useMemo(() => {
     switch (fontSize) {
@@ -53,30 +63,62 @@ export function KindleReader({ book }: KindleReaderProps) {
   const chapters = book.chapters.sort((a: Chapter, b: Chapter) => a.order - b.order);
   const currentChapter = chapters[currentChapterIndex];
 
-  // Initialize TTS
+  // Initialize Piper TTS
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      synthRef.current = window.speechSynthesis;
+    const initPiperTTS = async () => {
+      setIsLoadingVoices(true);
+      setTtsError(null);
       
-      // Load voices
-      const loadVoices = () => {
-        const voices = synthRef.current?.getVoices() || [];
-        setAvailableVoices(voices);
-        if (voices.length > 0 && !selectedVoice) {
-          // Prefer English voices, fallback to first available
-          const englishVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
-          setSelectedVoice(englishVoice);
+      try {
+        console.log('Initializing Piper TTS...');
+        
+        // Check if piperTTS is available
+        if (!piperTTS || typeof piperTTS.voices !== 'function') {
+          throw new Error('Piper TTS not available. Make sure @mintplex-labs/piper-tts-web is installed.');
         }
-      };
+        
+        // Get available voices (voices() is async!)
+        const voices = await piperTTS.voices();
+        console.log('Piper TTS voices:', voices);
+        
+        // Handle different return types
+        let voiceList: PiperVoice[] = [];
+        
+        if (Array.isArray(voices)) {
+          voiceList = voices.map((v: any) => ({
+            id: typeof v === 'string' ? v : v.id || v.voiceId,
+            name: typeof v === 'string' ? v : v.name || v.id || v.voiceId
+          }));
+        } else if (typeof voices === 'object' && voices !== null) {
+          voiceList = Object.entries(voices).map(([id, name]) => ({
+            id,
+            name: typeof name === 'string' ? name : id
+          }));
+        } else {
+          throw new Error('Unexpected voices format');
+        }
+        
+        console.log('Processed voice list:', voiceList);
+        setAvailableVoices(voiceList);
+        setIsLoadingVoices(false);
+        
+        // Set default voice if available
+        if (voiceList.length > 0) {
+          const defaultVoice = voiceList.find(v => v.id.includes('en_US')) || voiceList[0];
+          setSelectedVoiceId(defaultVoice.id);
+          console.log('Selected default voice:', defaultVoice);
+        } else {
+          console.warn('No voices available');
+          setTtsError('No voices available. Please check your connection.');
+        }
+      } catch (error) {
+        console.error('Failed to initialize Piper TTS:', error);
+        setIsLoadingVoices(false);
+        setTtsError(`Failed to initialize TTS: ${error instanceof Error ? error.message : 'Unknown error'}. Please refresh the page.`);
+      }
+    };
 
-      loadVoices();
-      // Some browsers load voices asynchronously
-      synthRef.current?.addEventListener('voiceschanged', loadVoices);
-
-      return () => {
-        synthRef.current?.removeEventListener('voiceschanged', loadVoices);
-      };
-    }
+    initPiperTTS();
   }, []);
 
   // Get full chapter text for TTS
@@ -111,21 +153,16 @@ export function KindleReader({ book }: KindleReaderProps) {
   // Stop TTS when chapter changes
   useEffect(() => {
     stopTTS();
-    setCurrentWordIndex(-1);
   }, [currentChapterIndex]);
 
-  // Paginate content
+  // Paginate content with dialogue formatting
   useEffect(() => {
     if (!currentChapter || !contentRef.current) return;
 
     const paginateContent = () => {
-      const container = contentRef.current;
-      if (!container) return;
-
       // Use sections if available, otherwise use content
       let content = currentChapter.content;
       if (currentChapter.sections && currentChapter.sections.length > 0) {
-        // Combine sections without headers (section titles are for reference only)
         content = currentChapter.sections
           .sort((a, b) => a.order - b.order)
           .map(s => s.content.trim())
@@ -152,91 +189,173 @@ export function KindleReader({ book }: KindleReaderProps) {
     paginateContent();
   }, [currentChapter, fontSize, lineSpacing, margins, wordsPerPage]);
 
-  // TTS Functions
-  const stopTTS = () => {
-    if (synthRef.current) {
-      synthRef.current.cancel();
-    }
-    setIsTTSPlaying(false);
-    setCurrentWordIndex(-1);
-    if (utteranceRef.current) {
-      utteranceRef.current = null;
-    }
-  };
+  // Piper TTS Functions
+  const ensureVoiceDownloaded = useCallback(async (voiceId: string): Promise<boolean> => {
+    try {
+      // stored() returns a promise
+      const stored = await piperTTS.stored();
+      if (Array.isArray(stored) && stored.includes(voiceId)) {
+        return true;
+      }
 
-  const pauseTTS = () => {
-    if (synthRef.current && synthRef.current.speaking) {
-      synthRef.current.pause();
+      setIsLoadingVoice(true);
+      setTtsError(null);
+
+      await piperTTS.download(voiceId, (progress) => {
+        // Progress callback - could show progress UI if needed
+        console.log(`Downloading ${voiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+      });
+
+      setIsLoadingVoice(false);
+      return true;
+    } catch (error) {
+      console.error('Failed to download voice:', error);
+      setIsLoadingVoice(false);
+      setTtsError('Failed to download voice model. Please check your connection.');
+      return false;
+    }
+  }, []);
+
+  const processTextChunk = useCallback(async (text: string, voiceId: string): Promise<Blob | null> => {
+    try {
+      // Remove quotes for TTS (they're just formatting)
+      const cleanText = text.replace(/[""]/g, '');
+      if (!cleanText.trim()) return null;
+
+      const wav = await piperTTS.predict({
+        text: cleanText,
+        voiceId: voiceId,
+      });
+      return wav;
+    } catch (error) {
+      console.error('TTS synthesis error:', error);
+      return null;
+    }
+  }, []);
+
+  const playAudioQueue = useCallback(async () => {
+    if (isProcessingQueueRef.current) return;
+    
+    isProcessingQueueRef.current = true;
+
+    while (audioQueueRef.current.length > 0 && isTTSPlaying && !isTTSPaused) {
+      const blob = audioQueueRef.current.shift();
+      if (!blob) continue;
+
+      await new Promise<void>((resolve) => {
+        const audio = new Audio();
+        audio.src = URL.createObjectURL(blob);
+        audio.playbackRate = ttsSpeed;
+        
+        audio.onended = () => {
+          URL.revokeObjectURL(audio.src);
+          resolve();
+        };
+        
+        audio.onerror = () => {
+          URL.revokeObjectURL(audio.src);
+          resolve();
+        };
+
+        audio.play().catch((error) => {
+          console.error('Audio play error:', error);
+          URL.revokeObjectURL(audio.src);
+          resolve();
+        });
+
+        audioRef.current = audio;
+      });
+    }
+
+    isProcessingQueueRef.current = false;
+    
+    if (audioQueueRef.current.length === 0 && isTTSPlaying) {
       setIsTTSPlaying(false);
+      setIsTTSPaused(false);
     }
-  };
+  }, [isTTSPlaying, isTTSPaused, ttsSpeed]);
 
-  const resumeTTS = () => {
-    if (synthRef.current && synthRef.current.paused) {
-      synthRef.current.resume();
-      setIsTTSPlaying(true);
-    }
-  };
-
-  const startTTS = () => {
-    if (!synthRef.current || !getChapterText || !selectedVoice) {
+  const startTTS = useCallback(async () => {
+    if (!getChapterText || !selectedVoiceId) {
       return;
     }
 
     // Stop any existing speech
     stopTTS();
 
-    const utterance = new SpeechSynthesisUtterance(getChapterText);
-    utterance.rate = ttsSpeed;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-    utterance.voice = selectedVoice;
+    // Ensure voice is downloaded
+    const downloaded = await ensureVoiceDownloaded(selectedVoiceId);
+    if (!downloaded) {
+      return;
+    }
 
-    // Track word boundaries for highlighting
-    utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        // Find the word index based on character position
-        const charIndex = event.charIndex;
-        const textBefore = getChapterText.substring(0, charIndex);
-        // Count words before this position
-        const wordsBefore = textBefore.trim().split(/\s+/).filter(w => w.length > 0);
-        const wordIndex = wordsBefore.length;
-        
-        setCurrentWordIndex(wordIndex);
-        
-        // Scroll to current word (if visible)
-        setTimeout(() => {
-          if (currentWordRef.current) {
-            currentWordRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-      }
-    };
-
-    utterance.onend = () => {
-      setIsTTSPlaying(false);
-      setCurrentWordIndex(-1);
-    };
-
-    utterance.onerror = (event) => {
-      console.error('TTS Error:', event);
-      setIsTTSPlaying(false);
-    };
-
-    utteranceRef.current = utterance;
-    synthRef.current.speak(utterance);
     setIsTTSPlaying(true);
-  };
+    setIsTTSPaused(false);
+    setTtsError(null);
+    audioQueueRef.current = [];
 
-  const toggleTTS = () => {
+    // Split text into chunks (Piper works better with smaller chunks)
+    const chunks = getChapterText.split(/([.!?]\s+)/).filter(c => c.trim());
+    const sentences: string[] = [];
+    
+    for (let i = 0; i < chunks.length; i += 2) {
+      const sentence = chunks[i] + (chunks[i + 1] || '');
+      if (sentence.trim()) {
+        sentences.push(sentence.trim());
+      }
+    }
+
+    // Process sentences sequentially and add to queue
+    for (const sentence of sentences) {
+      if (!isTTSPlaying || isTTSPaused) break;
+      
+      const blob = await processTextChunk(sentence, selectedVoiceId);
+      if (blob) {
+        audioQueueRef.current.push(blob);
+        // Start playing if this is the first chunk
+        if (audioQueueRef.current.length === 1) {
+          playAudioQueue();
+        }
+      }
+    }
+  }, [getChapterText, selectedVoiceId, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
+
+  const stopTTS = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsTTSPlaying(false);
+    setIsTTSPaused(false);
+    audioQueueRef.current = [];
+    isProcessingQueueRef.current = false;
+  }, []);
+
+  const pauseTTS = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setIsTTSPaused(true);
+  }, []);
+
+  const resumeTTS = useCallback(() => {
+    setIsTTSPaused(false);
+    if (audioQueueRef.current.length > 0) {
+      playAudioQueue();
+    }
+  }, [playAudioQueue]);
+
+  const toggleTTS = useCallback(() => {
     if (isTTSPlaying) {
-      pauseTTS();
-    } else if (synthRef.current?.paused) {
-      resumeTTS();
+      if (isTTSPaused) {
+        resumeTTS();
+      } else {
+        pauseTTS();
+      }
     } else {
       startTTS();
     }
-  };
+  }, [isTTSPlaying, isTTSPaused, startTTS, pauseTTS, resumeTTS]);
 
   const goToNextPage = () => {
     stopTTS();
@@ -248,7 +367,6 @@ export function KindleReader({ book }: KindleReaderProps) {
         setIsFlipping(false);
       }, 300);
     } else if (currentChapterIndex < chapters.length - 1) {
-      // Next chapter
       setFlipDirection('forward');
       setIsFlipping(true);
       setTimeout(() => {
@@ -269,12 +387,10 @@ export function KindleReader({ book }: KindleReaderProps) {
         setIsFlipping(false);
       }, 300);
     } else if (currentChapterIndex > 0) {
-      // Previous chapter - go to last page
       setFlipDirection('backward');
       setIsFlipping(true);
       setTimeout(() => {
         setCurrentChapterIndex(currentChapterIndex - 1);
-        // Will be set to last page after pagination
         setIsFlipping(false);
       }, 300);
     }
@@ -349,7 +465,13 @@ export function KindleReader({ book }: KindleReaderProps) {
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [currentPage, currentChapterIndex, pages.length]);
+  }, [currentPage, currentChapterIndex, pages.length, stopTTS]);
+
+  // Format page text with dialogue
+  const formatPageText = useCallback((text: string) => {
+    if (!text) return [];
+    return formatTextWithDialogue(text);
+  }, []);
 
   if (!currentChapter) {
     return (
@@ -406,15 +528,7 @@ export function KindleReader({ book }: KindleReaderProps) {
           <div className="menu-right">
             <button 
               className={`menu-btn tts-btn ${isTTSPlaying ? 'active' : ''}`}
-              onClick={() => {
-                setShowTTS(!showTTS);
-                if (!showTTS && !isTTSPlaying) {
-                  // Auto-start TTS when opening panel
-                  setTimeout(() => {
-                    if (selectedVoice) startTTS();
-                  }, 100);
-                }
-              }}
+              onClick={() => setShowTTS(!showTTS)}
               title="Text-to-Speech"
             >
               <Volume2 size={20} />
@@ -437,79 +551,89 @@ export function KindleReader({ book }: KindleReaderProps) {
             }}>×</button>
           </div>
 
-          {!synthRef.current ? (
+          {ttsError && (
             <div className="tts-error">
-              <p>Text-to-Speech is not supported in your browser.</p>
+              <p>{ttsError}</p>
             </div>
-          ) : (
-            <>
-              <div className="settings-group">
-                <div className="tts-controls">
-                  <button
-                    className="tts-play-btn"
-                    onClick={toggleTTS}
-                    disabled={!selectedVoice}
-                  >
-                    {isTTSPlaying ? <Pause size={20} /> : <Play size={20} />}
-                    <span>{isTTSPlaying ? 'Pause' : 'Play'}</span>
-                  </button>
-                  <button
-                    className="tts-stop-btn"
-                    onClick={stopTTS}
-                    disabled={!isTTSPlaying && !synthRef.current?.paused}
-                  >
-                    Stop
-                  </button>
-                </div>
-              </div>
-
-              <div className="settings-group">
-                <label>Speed: {ttsSpeed.toFixed(1)}x</label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={ttsSpeed}
-                  onChange={(e) => {
-                    const newSpeed = parseFloat(e.target.value);
-                    setTtsSpeed(newSpeed);
-                    if (utteranceRef.current && synthRef.current) {
-                      utteranceRef.current.rate = newSpeed;
-                      if (synthRef.current.speaking) {
-                        synthRef.current.cancel();
-                        startTTS();
-                      }
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="settings-group">
-                <label>Voice</label>
-                <select
-                  className="voice-selector"
-                  value={selectedVoice?.name || ''}
-                  onChange={(e) => {
-                    const voice = availableVoices.find(v => v.name === e.target.value);
-                    if (voice) {
-                      setSelectedVoice(voice);
-                      if (isTTSPlaying) {
-                        stopTTS();
-                        setTimeout(() => startTTS(), 100);
-                      }
-                    }
-                  }}
-                >
-                  {availableVoices.map((voice) => (
-                    <option key={voice.name} value={voice.name}>
-                      {voice.name} ({voice.lang})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
           )}
+
+          <div className="settings-group">
+            <div className="tts-controls">
+              <button
+                className="tts-play-btn"
+                onClick={toggleTTS}
+                disabled={isLoadingVoice || !selectedVoiceId}
+              >
+                {isLoadingVoice ? (
+                  <Loader2 size={20} className="spinning" />
+                ) : isTTSPlaying ? (
+                  isTTSPaused ? <Play size={20} /> : <Pause size={20} />
+                ) : (
+                  <Play size={20} />
+                )}
+                <span>
+                  {isLoadingVoice ? 'Loading...' : isTTSPlaying ? (isTTSPaused ? 'Resume' : 'Pause') : 'Play'}
+                </span>
+              </button>
+              <button
+                className="tts-stop-btn"
+                onClick={stopTTS}
+                disabled={!isTTSPlaying && !isTTSPaused}
+              >
+                Stop
+              </button>
+            </div>
+          </div>
+
+          <div className="settings-group">
+            <label>Speed: {ttsSpeed.toFixed(1)}x</label>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={ttsSpeed}
+              onChange={(e) => {
+                const newSpeed = parseFloat(e.target.value);
+                setTtsSpeed(newSpeed);
+                if (audioRef.current) {
+                  audioRef.current.playbackRate = newSpeed;
+                }
+              }}
+            />
+          </div>
+
+          <div className="settings-group">
+            <label>Voice {isLoadingVoices && '(Loading...)'}</label>
+            {isLoadingVoices ? (
+              <div className="voice-loading">
+                <Loader2 size={16} className="spinning" />
+                <span>Loading voices...</span>
+              </div>
+            ) : availableVoices.length === 0 ? (
+              <div className="tts-error">
+                <p>No voices available. Please refresh the page.</p>
+              </div>
+            ) : (
+              <select
+                className="voice-selector"
+                value={selectedVoiceId}
+                onChange={async (e) => {
+                  const voiceId = e.target.value;
+                  setSelectedVoiceId(voiceId);
+                  if (isTTSPlaying) {
+                    stopTTS();
+                  }
+                }}
+              >
+                {availableVoices.map((voice) => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       )}
 
@@ -604,50 +728,35 @@ export function KindleReader({ book }: KindleReaderProps) {
             </div>
           )}
 
-          {/* Page Content */}
+          {/* Page Content with Dialogue Formatting */}
           <div className="page-text">
-            {pages[currentPage]?.split('\n\n').map((para, idx) => {
-              // Calculate global word index for this paragraph
-              const wordsInPreviousPages = pages.slice(0, currentPage).reduce((sum, p) => {
-                return sum + p.split(/\s+/).filter(w => w.trim().length > 0).length;
-              }, 0);
+            {pages[currentPage] && (() => {
+              const pageText = pages[currentPage];
+              // Split by paragraphs first
+              const paragraphs = pageText.split(/\n\n+/).filter(p => p.trim());
               
-              // Split paragraph into words for highlighting
-              const words = para.split(/(\s+)/);
-              let wordCounter = wordsInPreviousPages;
-              
-              // Count words in previous paragraphs on this page
-              for (let i = 0; i < idx; i++) {
-                const prevPara = pages[currentPage]?.split('\n\n')[i] || '';
-                wordCounter += prevPara.split(/\s+/).filter(w => w.trim().length > 0).length;
-              }
-              
-              return (
-                <p key={idx} className="kindle-paragraph">
-                  {words.map((word, wordIdx) => {
-                    const isWord = word.trim().length > 0;
-                    let globalWordIndex = -1;
-                    
-                    if (isWord) {
-                      globalWordIndex = wordCounter;
-                      wordCounter++;
-                    }
-                    
-                    const isHighlighted = isTTSPlaying && isWord && globalWordIndex === currentWordIndex;
-                    
-                    return (
-                      <span
-                        key={wordIdx}
-                        ref={isHighlighted ? currentWordRef : null}
-                        className={isHighlighted ? 'tts-highlight' : ''}
-                      >
-                        {word}
-                      </span>
-                    );
-                  })}
-                </p>
-              );
-            })}
+              return paragraphs.map((para, paraIdx) => {
+                const formattedSegments = formatPageText(para);
+                return (
+                  <p key={paraIdx} className="kindle-paragraph">
+                    {formattedSegments.map((segment, segIdx) => {
+                      if (segment.text === '\n\n') {
+                        return null;
+                      }
+                      
+                      return (
+                        <span
+                          key={segIdx}
+                          className={segment.isDialogue ? 'dialogue-text' : 'narrative-text'}
+                        >
+                          {segment.text}
+                        </span>
+                      );
+                    })}
+                  </p>
+                );
+              });
+            })()}
           </div>
 
           {/* Page Footer */}
@@ -678,5 +787,3 @@ export function KindleReader({ book }: KindleReaderProps) {
 }
 
 export default KindleReader;
-
-
