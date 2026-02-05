@@ -221,48 +221,6 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     };
   }, [title, content, isLocked, chapter, saveChapter]);
 
-  // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (!isLocked && chapter) {
-          // If in sections view, trigger save from sections editor
-          if (useSections && sectionsEditorRef.current) {
-            sectionsEditorRef.current.save();
-          } else {
-            saveChapter();
-          }
-          if (autosaveTimeoutRef.current) {
-            clearTimeout(autosaveTimeoutRef.current);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chapter, isLocked, useSections, saveChapter]);
-
-  if (!chapter) {
-    return (
-      <div className="editor-empty">
-        <div className="empty-content">
-          <h3>No Chapter Selected</h3>
-          <p>Select a chapter from the list or create a new one to start writing.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const getWordCount = (text: string) => {
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-  };
-
-  const getCharCount = (text: string) => {
-    return text.length;
-  };
-
   // Fix formatting - break up large paragraphs
   const fixFormatting = useCallback(() => {
     if (!chapter || !content.trim()) return;
@@ -325,6 +283,48 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       }, 100);
     }
   }, [chapter, content, onUpdateChapter]);
+
+  // Keyboard shortcut for manual save (Ctrl+S / Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (!isLocked && chapter) {
+          // If in sections view, trigger save from sections editor
+          if (useSections && sectionsEditorRef.current) {
+            sectionsEditorRef.current.save();
+          } else {
+            saveChapter();
+          }
+          if (autosaveTimeoutRef.current) {
+            clearTimeout(autosaveTimeoutRef.current);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [chapter, isLocked, useSections, saveChapter]);
+
+  if (!chapter) {
+    return (
+      <div className="editor-empty">
+        <div className="empty-content">
+          <h3>No Chapter Selected</h3>
+          <p>Select a chapter from the list or create a new one to start writing.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getWordCount = (text: string) => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  const getCharCount = (text: string) => {
+    return text.length;
+  };
 
   const wordCount = getWordCount(content);
   const charCount = getCharCount(content);
