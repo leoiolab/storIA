@@ -137,9 +137,10 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
 
   // Fix formatting for active section - break up large paragraphs
   const fixSectionFormatting = useCallback(() => {
-    if (!activeSection || !activeSection.content.trim()) return;
+    const currentActiveSection = sections.find(s => s.id === activeSectionId);
+    if (!currentActiveSection || !currentActiveSection.content.trim()) return;
 
-    let formatted = activeSection.content.trim();
+    let formatted = currentActiveSection.content.trim();
     
     // If content already has paragraph breaks, just clean them up
     if (formatted.includes('\n\n')) {
@@ -177,10 +178,10 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     }
     
     // Update section content if changed
-    if (formatted !== activeSection.content) {
-      handleSectionUpdate(activeSection.id, { content: formatted });
+    if (formatted !== currentActiveSection.content) {
+      handleSectionUpdate(currentActiveSection.id, { content: formatted });
     }
-  }, [activeSection, handleSectionUpdate]);
+  }, [sections, activeSectionId, handleSectionUpdate]);
 
   const saveSections = useCallback((updatedSections: ChapterSection[]) => {
     if (!chapter) return;
