@@ -80,35 +80,82 @@ export function KindleReader({ book }: KindleReaderProps) {
         // Get available voices (voices() is async!)
         const voices = await piperTTS.voices();
         console.log('Piper TTS voices:', voices);
+        console.log('Voices type:', typeof voices, 'Is array:', Array.isArray(voices));
+        if (Array.isArray(voices) && voices.length > 0) {
+          console.log('First voice item:', voices[0], 'Type:', typeof voices[0]);
+        }
         
         // Handle different return types
         let voiceList: PiperVoice[] = [];
         
         if (Array.isArray(voices)) {
+          // Process array of voices
+          console.log('Processing array of', voices.length, 'voices');
           voiceList = voices
-            .filter((v: any) => v !== null && v !== undefined)
-            .map((v: any) => ({
-              id: typeof v === 'string' ? v : (v.id || v.voiceId || ''),
-              name: typeof v === 'string' ? v : (v.name || v.id || v.voiceId || '')
-            }))
-            .filter((v: PiperVoice) => v.id && v.name);
-        } else if (typeof voices === 'object' && voices !== null) {
+            .map((v: any, index: number) => {
+              // Handle string format (voice ID)
+              if (typeof v === 'string') {
+                const trimmed = v.trim();
+                if (trimmed.length === 0) {
+                  console.warn(`Voice at index ${index} is empty string`);
+                  return null;
+                }
+                return {
+                  id: trimmed,
+                  name: trimmed // Use ID as name if no name provided
+                };
+              }
+              // Handle object format
+              if (typeof v === 'object' && v !== null) {
+                const id = v.id || v.voiceId || '';
+                const name = v.name || v.displayName || v.label || id;
+                const idStr = String(id).trim();
+                const nameStr = String(name).trim();
+                
+                if (idStr.length === 0 && nameStr.length === 0) {
+                  console.warn(`Voice at index ${index} has no id or name:`, v);
+                  return null;
+                }
+                
+                return {
+                  id: idStr || nameStr || `voice-${index}`,
+                  name: nameStr || idStr || `Voice ${index + 1}`
+                };
+              }
+              
+              console.warn(`Voice at index ${index} has unexpected type:`, typeof v, v);
+              return null;
+            })
+            .filter((v: PiperVoice | null): v is PiperVoice => {
+              // Filter out null entries and ensure both id and name exist
+              const isValid = v !== null && v.id && v.name && v.id.length > 0 && v.name.length > 0;
+              if (!isValid && v !== null) {
+                console.warn('Filtered out invalid voice:', v);
+              }
+              return isValid;
+            });
+        } else if (typeof voices === 'object' && voices !== null && !Array.isArray(voices)) {
+          // Handle object format (key-value pairs)
           voiceList = Object.entries(voices)
-            .filter(([id, name]) => id && name)
+            .filter(([id, name]) => id && (name || id))
             .map(([id, name]) => ({
-              id: String(id),
-              name: typeof name === 'string' ? name : String(id)
-            }));
+              id: String(id).trim(),
+              name: typeof name === 'string' ? name.trim() : String(id).trim()
+            }))
+            .filter((v: PiperVoice) => v.id.length > 0 && v.name.length > 0);
         } else if (voices === null || voices === undefined) {
           throw new Error('Voices API returned null or undefined');
         } else {
           throw new Error(`Unexpected voices format: ${typeof voices}`);
         }
         
-        // Filter out any invalid entries
-        voiceList = voiceList.filter(v => v && v.id && v.name);
+        console.log('Final voice list:', voiceList);
         
         console.log('Processed voice list:', voiceList);
+        console.log('Voice list length:', voiceList.length);
+        if (voiceList.length === 0 && Array.isArray(voices) && voices.length > 0) {
+          console.error('All voices were filtered out! First few raw voices:', voices.slice(0, 5));
+        }
         setAvailableVoices(voiceList);
         setIsLoadingVoices(false);
         
