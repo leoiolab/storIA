@@ -85,18 +85,28 @@ export function KindleReader({ book }: KindleReaderProps) {
         let voiceList: PiperVoice[] = [];
         
         if (Array.isArray(voices)) {
-          voiceList = voices.map((v: any) => ({
-            id: typeof v === 'string' ? v : v.id || v.voiceId,
-            name: typeof v === 'string' ? v : v.name || v.id || v.voiceId
-          }));
+          voiceList = voices
+            .filter((v: any) => v !== null && v !== undefined)
+            .map((v: any) => ({
+              id: typeof v === 'string' ? v : (v.id || v.voiceId || ''),
+              name: typeof v === 'string' ? v : (v.name || v.id || v.voiceId || '')
+            }))
+            .filter((v: PiperVoice) => v.id && v.name);
         } else if (typeof voices === 'object' && voices !== null) {
-          voiceList = Object.entries(voices).map(([id, name]) => ({
-            id,
-            name: typeof name === 'string' ? name : id
-          }));
+          voiceList = Object.entries(voices)
+            .filter(([id, name]) => id && name)
+            .map(([id, name]) => ({
+              id: String(id),
+              name: typeof name === 'string' ? name : String(id)
+            }));
+        } else if (voices === null || voices === undefined) {
+          throw new Error('Voices API returned null or undefined');
         } else {
-          throw new Error('Unexpected voices format');
+          throw new Error(`Unexpected voices format: ${typeof voices}`);
         }
+        
+        // Filter out any invalid entries
+        voiceList = voiceList.filter(v => v && v.id && v.name);
         
         console.log('Processed voice list:', voiceList);
         setAvailableVoices(voiceList);
@@ -104,9 +114,14 @@ export function KindleReader({ book }: KindleReaderProps) {
         
         // Set default voice if available
         if (voiceList.length > 0) {
-          const defaultVoice = voiceList.find(v => v.id.includes('en_US')) || voiceList[0];
-          setSelectedVoiceId(defaultVoice.id);
-          console.log('Selected default voice:', defaultVoice);
+          const defaultVoice = voiceList.find(v => v && v.id && v.id.includes('en_US')) || voiceList[0];
+          if (defaultVoice && defaultVoice.id) {
+            setSelectedVoiceId(defaultVoice.id);
+            console.log('Selected default voice:', defaultVoice);
+          } else {
+            console.warn('No valid default voice found');
+            setTtsError('No valid voices available.');
+          }
         } else {
           console.warn('No voices available');
           setTtsError('No voices available. Please check your connection.');
@@ -114,7 +129,14 @@ export function KindleReader({ book }: KindleReaderProps) {
       } catch (error) {
         console.error('Failed to initialize Piper TTS:', error);
         setIsLoadingVoices(false);
-        setTtsError(`Failed to initialize TTS: ${error instanceof Error ? error.message : 'Unknown error'}. Please refresh the page.`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Provide more helpful error messages
+        if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+          setTtsError('Network error: Unable to load voices. Please check your internet connection and refresh the page.');
+        } else {
+          setTtsError(`Failed to initialize TTS: ${errorMessage}. Please refresh the page.`);
+        }
       }
     };
 
@@ -195,23 +217,42 @@ export function KindleReader({ book }: KindleReaderProps) {
       // stored() returns a promise
       const stored = await piperTTS.stored();
       if (Array.isArray(stored) && stored.includes(voiceId)) {
+        console.log(`Voice ${voiceId} already downloaded`);
         return true;
       }
 
       setIsLoadingVoice(true);
       setTtsError(null);
 
-      await piperTTS.download(voiceId, (progress) => {
-        // Progress callback - could show progress UI if needed
-        console.log(`Downloading ${voiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
-      });
+      try {
+        await piperTTS.download(voiceId, (progress) => {
+          // Progress callback - could show progress UI if needed
+          if (progress && progress.loaded && progress.total) {
+            console.log(`Downloading ${voiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+          }
+        });
 
-      setIsLoadingVoice(false);
-      return true;
+        setIsLoadingVoice(false);
+        console.log(`Successfully downloaded voice: ${voiceId}`);
+        return true;
+      } catch (downloadError) {
+        console.error('Download error:', downloadError);
+        setIsLoadingVoice(false);
+        
+        // Check if it's a network error
+        const errorMessage = downloadError instanceof Error ? downloadError.message : String(downloadError);
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_NAME_NOT_RESOLVED')) {
+          setTtsError('Network error: Unable to download voice model. Please check your internet connection and try again.');
+        } else {
+          setTtsError(`Failed to download voice model: ${errorMessage}`);
+        }
+        return false;
+      }
     } catch (error) {
-      console.error('Failed to download voice:', error);
+      console.error('Failed to check/download voice:', error);
       setIsLoadingVoice(false);
-      setTtsError('Failed to download voice model. Please check your connection.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setTtsError(`Voice error: ${errorMessage}`);
       return false;
     }
   }, []);
