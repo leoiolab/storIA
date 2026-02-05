@@ -357,6 +357,29 @@ export function KindleReader({ book }: KindleReaderProps) {
 
         setIsLoadingVoice(false);
         console.log(`Successfully downloaded voice: ${voiceId}`);
+        
+        // Verify the voice is actually stored and accessible
+        try {
+          const verifyStored = await piperTTS.stored();
+          const storedArray = Array.isArray(verifyStored) ? verifyStored : Object.keys(verifyStored || {});
+          if (!storedArray.includes(trimmedVoiceId)) {
+            console.warn(`Voice ${trimmedVoiceId} not found in stored list after download`);
+            // Wait a bit and check again (OPFS might need time to sync)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const verifyStored2 = await piperTTS.stored();
+            const storedArray2 = Array.isArray(verifyStored2) ? verifyStored2 : Object.keys(verifyStored2 || {});
+            if (!storedArray2.includes(trimmedVoiceId)) {
+              console.error(`Voice ${trimmedVoiceId} still not found after retry`);
+              setTtsError('Voice download may have failed. Please try again.');
+              return false;
+            }
+          }
+          console.log(`Verified voice ${trimmedVoiceId} is stored and ready`);
+        } catch (verifyError) {
+          console.warn('Could not verify voice storage:', verifyError);
+          // Continue anyway - the download seemed successful
+        }
+        
         return true;
       } catch (downloadError) {
         console.error('Download error:', downloadError);
@@ -388,6 +411,25 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
 
     try {
+      // Verify voice is stored before trying to use it
+      const stored = await piperTTS.stored();
+      const storedArray = Array.isArray(stored) ? stored : Object.keys(stored || {});
+      const trimmedVoiceId = voiceId.trim();
+      
+      if (!storedArray.includes(trimmedVoiceId)) {
+        console.error(`Voice ${trimmedVoiceId} not found in stored voices. Available:`, storedArray);
+        // Try to download it
+        console.log(`Attempting to download missing voice: ${trimmedVoiceId}`);
+        try {
+          await piperTTS.download(trimmedVoiceId);
+          // Wait a moment for OPFS to sync
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (downloadErr) {
+          console.error('Failed to download voice on-demand:', downloadErr);
+          return null;
+        }
+      }
+
       // Remove quotes for TTS (they're just formatting)
       const cleanText = text.replace(/[""]/g, '');
       if (!cleanText.trim()) {
@@ -395,10 +437,14 @@ export function KindleReader({ book }: KindleReaderProps) {
         return null;
       }
 
-      console.log('Synthesizing text chunk:', cleanText.substring(0, 50) + '...', 'with voice:', voiceId);
+      console.log('Synthesizing text chunk:', cleanText.substring(0, 50) + '...', 'with voice:', trimmedVoiceId);
+      
+      // Add a small delay between predictions to avoid overwhelming the system
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       const wav = await piperTTS.predict({
         text: cleanText,
-        voiceId: voiceId.trim(),
+        voiceId: trimmedVoiceId,
       });
       
       if (!wav || !(wav instanceof Blob)) {
@@ -406,10 +452,23 @@ export function KindleReader({ book }: KindleReaderProps) {
         return null;
       }
       
+      if (wav.size === 0) {
+        console.error('Empty WAV blob returned from predict');
+        return null;
+      }
+      
       console.log('Successfully synthesized audio blob, size:', wav.size, 'bytes');
       return wav;
     } catch (error) {
-      console.error('TTS synthesis error:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('TTS synthesis error:', errorMsg, error);
+      
+      // If it's an "Entry not found" error, the voice might not be properly initialized
+      if (errorMsg.includes('Entry not found') || errorMsg.includes('not valid JSON')) {
+        console.error('Voice model appears to be corrupted or not fully downloaded. Try re-downloading the voice.');
+        // Don't return null immediately - might be recoverable
+      }
+      
       return null;
     }
   }, []);
