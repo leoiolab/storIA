@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Chapter, ChapterSection } from '../types';
+import { formatTextWithDialogue } from '../utils/textFormatting';
 import './ChapterSectionsEditor.css';
 
 interface ChapterSectionsEditorProps {
   chapter: Chapter;
   onUpdateChapter: (chapter: Chapter) => void;
   isLocked: boolean;
+  showPreview?: boolean;
 }
 
 export interface ChapterSectionsEditorRef {
@@ -14,7 +16,7 @@ export interface ChapterSectionsEditorRef {
 }
 
 const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectionsEditorProps>(
-  ({ chapter, onUpdateChapter, isLocked }, ref) => {
+  ({ chapter, onUpdateChapter, isLocked, showPreview = false }, ref) => {
   const [sections, setSections] = useState<ChapterSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const sectionTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -338,18 +340,44 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
           </div>
           
           <div className="section-editor-content">
-            <textarea
-              ref={sectionTextareaRef}
-              value={activeSection.content}
-              onChange={(e) => handleSectionUpdate(activeSection.id, { content: e.target.value })}
-              placeholder="Write your section content here..."
-              className="section-content-textarea"
-              disabled={isLocked}
-            />
-            {isOverLimit && (
-              <div className="section-warning">
-                ⚠️ This section exceeds 2000 words and will be automatically split into multiple sections when saved.
+            {showPreview ? (
+              <div className="section-content-preview">
+                {activeSection.content.split(/\n\n+/).map((para, idx) => {
+                  if (!para.trim()) return <br key={idx} />;
+                  const formattedSegments = formatTextWithDialogue(para);
+                  return (
+                    <p key={idx} className="preview-paragraph">
+                      {formattedSegments.map((segment, segIdx) => {
+                        if (segment.text === '\n\n') return null;
+                        return (
+                          <span
+                            key={segIdx}
+                            className={segment.isDialogue ? 'dialogue-text' : 'narrative-text'}
+                          >
+                            {segment.text}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  );
+                })}
               </div>
+            ) : (
+              <>
+                <textarea
+                  ref={sectionTextareaRef}
+                  value={activeSection.content}
+                  onChange={(e) => handleSectionUpdate(activeSection.id, { content: e.target.value })}
+                  placeholder="Write your section content here..."
+                  className="section-content-textarea"
+                  disabled={isLocked}
+                />
+                {isOverLimit && (
+                  <div className="section-warning">
+                    ⚠️ This section exceeds 2000 words and will be automatically split into multiple sections when saved.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

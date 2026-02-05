@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, Unlock, GitCompare, Save, FileText } from 'lucide-react';
+import { Lock, Unlock, GitCompare, Save, FileText, Eye, Edit } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import ChapterVersionComparison from './ChapterVersionComparison';
 import ChapterSectionsEditor, { ChapterSectionsEditorRef } from './ChapterSectionsEditor';
+import { formatTextWithDialogue } from '../utils/textFormatting';
 import './ChapterEditor.css';
 import type { EntityState } from './CharacterEditor';
 
@@ -19,6 +20,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
   const [isLocked, setIsLocked] = useState(false);
   const [showVersionComparison, setShowVersionComparison] = useState(false);
   const [useSections, setUseSections] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sectionsEditorRef = useRef<ChapterSectionsEditorRef>(null);
@@ -384,6 +386,15 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               </button>
               <button
                 type="button"
+                onClick={() => setShowPreview(!showPreview)}
+                className={`toggle-btn ${showPreview ? 'active' : ''}`}
+                title={showPreview ? 'Switch to edit mode' : 'Preview formatted text'}
+              >
+                {showPreview ? <Edit size={18} /> : <Eye size={18} />}
+                <span>{showPreview ? 'Edit' : 'Preview'}</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowVersionComparison(true)}
                 className="version-btn"
                 title="Compare versions"
@@ -411,7 +422,30 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               chapter={chapter}
               onUpdateChapter={onUpdateChapter}
               isLocked={isLocked}
+              showPreview={showPreview}
             />
+          ) : showPreview ? (
+            <div className="chapter-content-preview">
+              {content.split(/\n\n+/).map((para, idx) => {
+                if (!para.trim()) return <br key={idx} />;
+                const formattedSegments = formatTextWithDialogue(para);
+                return (
+                  <p key={idx} className="preview-paragraph">
+                    {formattedSegments.map((segment, segIdx) => {
+                      if (segment.text === '\n\n') return null;
+                      return (
+                        <span
+                          key={segIdx}
+                          className={segment.isDialogue ? 'dialogue-text' : 'narrative-text'}
+                        >
+                          {segment.text}
+                        </span>
+                      );
+                    })}
+                  </p>
+                );
+              })}
+            </div>
           ) : (
             <textarea
               ref={contentTextareaRef}
