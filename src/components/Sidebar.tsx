@@ -1,8 +1,8 @@
-import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut, Settings, FileDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut, Settings, FileDown, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { ReactNode } from 'react';
 import './Sidebar.css';
 
-export type View = 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'reader';
+export type View = 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'reader' | 'plotpoints';
 
 interface SidebarProps {
   view: View;
@@ -103,6 +103,15 @@ function Sidebar({ view, onViewChange, children, onLogout, onOpenSettings, onOpe
         >
           <TrendingUp size={20} />
           {!isCollapsed && <span>Story Arc</span>}
+        </button>
+
+        <button
+          className={`nav-item ${view === 'plotpoints' ? 'active' : ''}`}
+          onClick={() => onViewChange('plotpoints')}
+          title="Plot Points"
+        >
+          <Target size={20} />
+          {!isCollapsed && <span>Plot Points</span>}
         </button>
       </nav>
 

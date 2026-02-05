@@ -1,13 +1,14 @@
-import { Chapter, PlotPoint } from '../types';
+import { Chapter, PlotPoint, Character } from '../types';
 import { TrendingUp } from 'lucide-react';
 import './StoryArcView.css';
 
 interface StoryArcViewProps {
   chapters: Chapter[];
   plotPoints: PlotPoint[];
+  characters: Character[];
 }
 
-function StoryArcView({ chapters, plotPoints }: StoryArcViewProps) {
+function StoryArcView({ chapters, plotPoints, characters }: StoryArcViewProps) {
   if (chapters.length === 0) {
     return (
       <div className="story-arc-empty">
@@ -22,6 +23,7 @@ function StoryArcView({ chapters, plotPoints }: StoryArcViewProps) {
     (sum, ch) => sum + ch.content.split(/\s+/).filter(w => w.length > 0).length,
     0
   );
+  const totalPages = Math.ceil(totalWords / 250); // Assuming ~250 words per page
 
   // Plot point categories with colors
   const categoryColors = {
@@ -44,6 +46,14 @@ function StoryArcView({ chapters, plotPoints }: StoryArcViewProps) {
           <div className="stat">
             <span className="stat-value">{totalWords.toLocaleString()}</span>
             <span className="stat-label">Words</span>
+          </div>
+          <div className="stat">
+            <span className="stat-value">{totalPages}</span>
+            <span className="stat-label">Pages</span>
+          </div>
+          <div className="stat">
+            <span className="stat-value">{characters.length}</span>
+            <span className="stat-label">Characters</span>
           </div>
           <div className="stat">
             <span className="stat-value">{plotPoints.length}</span>

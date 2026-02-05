@@ -181,6 +181,37 @@
   gap: 12px;
 }
 
+.section-editor-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-format-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.section-format-btn:hover:not(:disabled) {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.section-format-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .section-word-count-display {
   font-size: 13px;
   color: var(--color-text-secondary);

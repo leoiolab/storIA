@@ -200,6 +200,7 @@ export class CloudStorageService {
         name: data.metadata?.title || 'Untitled',
         metadata: data.metadata,
         settings: sanitizedSettings,
+        plotPoints: data.plotPoints,
       }),
     });
 

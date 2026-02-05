@@ -106,6 +106,7 @@
 .timeline-content {
   flex: 1;
   padding: 8px 20px;
+  margin-left: 56px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;

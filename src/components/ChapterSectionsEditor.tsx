@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { Chapter, ChapterSection } from '../types';
 import { formatTextWithDialogue } from '../utils/textFormatting';
 import './ChapterSectionsEditor.css';
@@ -22,6 +22,7 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
   const sectionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastChapterIdRef = useRef<string | null>(null);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingActiveSectionIdRef = useRef<string | null>(null);
 
   // Initialize sections from chapter
   useEffect(() => {
@@ -96,19 +97,90 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
       }
     } else if (chapter.sections) {
       // Chapter ID same, but sections might have been updated externally
-      setSections(chapter.sections);
-      // Ensure active section still exists
-      if (activeSectionId && !chapter.sections.find(s => s.id === activeSectionId)) {
-        setActiveSectionId(chapter.sections[0]?.id || null);
-      } else if (!activeSectionId && chapter.sections.length > 0) {
-        setActiveSectionId(chapter.sections[0].id);
+      const newSections = chapter.sections;
+      
+      // Check if we have a pending active section ID (from handleAddSection)
+      const targetActiveSectionId = pendingActiveSectionIdRef.current || activeSectionId;
+      const currentActiveSectionExists = targetActiveSectionId && newSections.find(s => s.id === targetActiveSectionId);
+      
+      // Only update sections if they actually changed (to avoid unnecessary re-renders)
+      const sectionsChanged = JSON.stringify(sections) !== JSON.stringify(newSections);
+      if (sectionsChanged) {
+        setSections(newSections);
       }
+      
+      // Preserve active section if it still exists, otherwise set to first section
+      if (targetActiveSectionId && currentActiveSectionExists) {
+        // Pending or current active section exists - use it
+        if (targetActiveSectionId !== activeSectionId) {
+          setActiveSectionId(targetActiveSectionId);
+        }
+        pendingActiveSectionIdRef.current = null; // Clear pending
+      } else if (targetActiveSectionId && !currentActiveSectionExists) {
+        // Pending section doesn't exist (shouldn't happen, but handle gracefully)
+        setActiveSectionId(newSections[0]?.id || null);
+        pendingActiveSectionIdRef.current = null;
+      } else if (activeSectionId && !currentActiveSectionExists) {
+        // Active section was deleted or doesn't exist anymore - set to first section
+        setActiveSectionId(newSections[0]?.id || null);
+      } else if (!activeSectionId && newSections.length > 0) {
+        // No active section but sections exist - set to first section
+        setActiveSectionId(newSections[0].id);
+      }
+      // If activeSectionId exists and the section still exists, keep it (don't reset to first)
     }
   }, [chapter, onUpdateChapter, activeSectionId]);
 
   const getWordCount = (text: string) => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
+
+  // Fix formatting for active section - break up large paragraphs
+  const fixSectionFormatting = useCallback(() => {
+    if (!activeSection || !activeSection.content.trim()) return;
+
+    let formatted = activeSection.content.trim();
+    
+    // If content already has paragraph breaks, just clean them up
+    if (formatted.includes('\n\n')) {
+      formatted = formatted
+        .split(/\n\n+/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    } else {
+      // Content is one big paragraph - break it up intelligently
+      // Strategy: Break after sentences ending with .!? followed by space and capital letter
+      // Also break at dialogue boundaries
+      
+      // Normalize any existing single newlines
+      formatted = formatted.replace(/\n+/g, ' ');
+      
+      // Break at sentence endings followed by capital letters (new paragraph)
+      formatted = formatted.replace(/([.!?])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break at dialogue boundaries - after closing quote followed by capital letter
+      formatted = formatted.replace(/([""])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break before opening quotes after sentence endings
+      formatted = formatted.replace(/([.!?])\s+([""])/g, '$1\n\n$2');
+      
+      // Clean up: remove multiple consecutive newlines
+      formatted = formatted.replace(/\n{3,}/g, '\n\n');
+      
+      // Trim each paragraph
+      formatted = formatted
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    }
+    
+    // Update section content if changed
+    if (formatted !== activeSection.content) {
+      handleSectionUpdate(activeSection.id, { content: formatted });
+    }
+  }, [activeSection, handleSectionUpdate]);
 
   const saveSections = useCallback((updatedSections: ChapterSection[]) => {
     if (!chapter) return;
@@ -236,6 +308,8 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     
     const updated = [...sections, newSection];
     setSections(updated);
+    // Set pending ref first, then set state, so useEffect knows to preserve this section
+    pendingActiveSectionIdRef.current = newSection.id;
     setActiveSectionId(newSection.id);
     saveSections(updated); // Save immediately when adding
   };
@@ -332,6 +406,16 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
               disabled={isLocked}
             />
             <div className="section-editor-meta">
+              <button
+                type="button"
+                onClick={fixSectionFormatting}
+                className="section-format-btn"
+                title="Fix formatting - break up large paragraphs"
+                disabled={isLocked || !activeSection.content.trim()}
+              >
+                <Wand2 size={16} />
+                <span>Fix Format</span>
+              </button>
               <span className="section-word-count-display">
                 {activeSectionWordCount.toLocaleString()} words
                 {isOverLimit && <span className="warning-badge"> (Will auto-split)</span>}

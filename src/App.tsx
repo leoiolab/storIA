@@ -5,6 +5,7 @@ import TopNavigation from './components/TopNavigation';
 import BookSelectionScreen from './components/BookSelectionScreen';
 import CharacterEditor, { EntityState } from './components/CharacterEditor';
 import ChapterEditor from './components/ChapterEditor';
+import PlotPointEditor from './components/PlotPointEditor';
 import BookMetadataEditor from './components/BookMetadataEditor';
 import RelationshipMap from './components/RelationshipMap';
 import StoryArcView from './components/StoryArcView';
@@ -14,7 +15,7 @@ import SettingsModal from './components/SettingsModal';
 import ExportModal from './components/ExportModal';
 import SaveStatus from './components/SaveStatus';
 import AuthScreen from './components/AuthScreen';
-import { Character, Chapter, Book, AppData, AIConfig, BookMetadata, ProjectSettings } from './types';
+import { Character, Chapter, PlotPoint, Book, AppData, AIConfig, BookMetadata, ProjectSettings } from './types';
 import { initializeAI } from './services/ai';
 import { CloudStorageService, AuthUser } from './services/cloudStorage';
 import './App.css';
@@ -36,6 +37,7 @@ function App() {
   const [appData, setAppData] = useState<AppData>(createInitialAppData);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  const [selectedPlotPoint, setSelectedPlotPoint] = useState<PlotPoint | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle');
@@ -45,6 +47,7 @@ function App() {
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
   const [characterState, setCharacterState] = useState<EntityState>('new');
   const [chapterState, setChapterState] = useState<EntityState>('new');
+  const [plotPointState, setPlotPointState] = useState<EntityState>('new');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const deriveAIConfigFromSettings = useCallback(
@@ -437,6 +440,109 @@ function App() {
     }
   };
 
+  const handleAddPlotPoint = async (plotPoint: PlotPoint) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      const newPlotPoint: PlotPoint = {
+        ...plotPoint,
+        id: plotPoint.id || Date.now().toString(),
+      };
+
+      updateCurrentBook(book => ({
+        ...book,
+        plotPoints: [...book.plotPoints, newPlotPoint],
+      }));
+      setSelectedPlotPoint(newPlotPoint);
+      
+      // Save to backend
+      await CloudStorageService.updateProject(currentBook.id, {
+        metadata: currentBook.metadata,
+        settings: currentBook.settings,
+        plotPoints: [...currentBook.plotPoints, newPlotPoint],
+      });
+      
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to add plot point:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleUpdatePlotPoint = async (plotPoint: PlotPoint) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      const updatedPlotPoint: PlotPoint = {
+        ...plotPoint,
+      };
+
+      updateCurrentBook(book => ({
+        ...book,
+        plotPoints: book.plotPoints.map(pp =>
+          pp.id === updatedPlotPoint.id ? updatedPlotPoint : pp
+        ),
+      }));
+      setSelectedPlotPoint(updatedPlotPoint);
+      
+      // Save to backend
+      const updatedBook = appData.books.find(b => b.id === currentBook.id);
+      if (updatedBook) {
+        await CloudStorageService.updateProject(currentBook.id, {
+          metadata: updatedBook.metadata,
+          settings: updatedBook.settings,
+          plotPoints: updatedBook.plotPoints.map(pp =>
+            pp.id === updatedPlotPoint.id ? updatedPlotPoint : pp
+          ),
+        });
+      }
+      
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to update plot point:', error);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleDeletePlotPoint = async (id: string) => {
+    if (!currentBook) return;
+
+    setSaveStatus('saving');
+
+    try {
+      updateCurrentBook(book => ({
+        ...book,
+        plotPoints: book.plotPoints.filter(pp => pp.id !== id),
+      }));
+      
+      if (selectedPlotPoint?.id === id) {
+        setSelectedPlotPoint(null);
+      }
+      
+      // Save to backend
+      const updatedBook = appData.books.find(b => b.id === currentBook.id);
+      if (updatedBook) {
+        await CloudStorageService.updateProject(currentBook.id, {
+          metadata: updatedBook.metadata,
+          settings: updatedBook.settings,
+          plotPoints: updatedBook.plotPoints.filter(pp => pp.id !== id),
+        });
+      }
+      
+      setSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to delete plot point:', error);
+      setSaveStatus('error');
+    }
+  };
+
   const handleUpdateMetadata = async (metadata: BookMetadata) => {
     if (!currentBook) return;
 
@@ -593,11 +699,25 @@ function App() {
           <StoryArcView
             chapters={currentBook.chapters}
             plotPoints={currentBook.plotPoints}
+            characters={currentBook.characters}
           />
         );
 
       case 'reader':
         return <KindleReader book={currentBook} />;
+
+      case 'plotpoints':
+        return (
+          <PlotPointEditor
+            plotPoint={selectedPlotPoint}
+            allPlotPoints={currentBook.plotPoints}
+            chapters={currentBook.chapters}
+            characters={currentBook.characters}
+            onUpdatePlotPoint={handleUpdatePlotPoint}
+            onDeletePlotPoint={handleDeletePlotPoint}
+            onStateChange={setPlotPointState}
+          />
+        );
 
       default:
         return null;
@@ -661,17 +781,21 @@ function App() {
       </Sidebar>
 
       <div className="content">
-        {/* Top Navigation Bar - shown when in characters or chapters view */}
-        {(view === 'characters' || view === 'chapters') && currentBook && (
+        {/* Top Navigation Bar - shown when in characters, chapters, or plotpoints view */}
+        {(view === 'characters' || view === 'chapters' || view === 'plotpoints') && currentBook && (
           <TopNavigation
             characters={currentBook.characters}
             chapters={currentBook.chapters}
+            plotPoints={currentBook.plotPoints}
             selectedCharacter={selectedCharacter}
             selectedChapter={selectedChapter}
+            selectedPlotPoint={selectedPlotPoint}
             onSelectCharacter={setSelectedCharacter}
             onSelectChapter={setSelectedChapter}
+            onSelectPlotPoint={setSelectedPlotPoint}
             onAddCharacter={handleAddCharacter}
             onAddChapter={handleAddChapter}
+            onAddPlotPoint={handleAddPlotPoint}
             onDeleteCharacter={handleDeleteCharacter}
             onDeleteChapter={handleDeleteChapter}
             currentView={view}

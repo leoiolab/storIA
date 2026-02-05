@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, Unlock, GitCompare, Save, FileText, Eye, Edit } from 'lucide-react';
+import { Lock, Unlock, GitCompare, Save, FileText, Eye, Edit, Wand2 } from 'lucide-react';
 import { Chapter } from '../types';
 import ContextAwareEditor from './ContextAwareEditor';
 import ChapterVersionComparison from './ChapterVersionComparison';
@@ -263,6 +263,69 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
     return text.length;
   };
 
+  // Fix formatting - break up large paragraphs
+  const fixFormatting = useCallback(() => {
+    if (!chapter || !content.trim()) return;
+
+    let formatted = content.trim();
+    
+    // If content already has paragraph breaks, just clean them up
+    if (formatted.includes('\n\n')) {
+      formatted = formatted
+        .split(/\n\n+/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    } else {
+      // Content is one big paragraph - break it up intelligently
+      // Strategy: Break after sentences ending with .!? followed by space and capital letter
+      // Also break at dialogue boundaries
+      
+      // Normalize any existing single newlines
+      formatted = formatted.replace(/\n+/g, ' ');
+      
+      // Break at sentence endings followed by capital letters (new paragraph)
+      // Pattern: .!? followed by space and capital letter (but not if it's part of an abbreviation)
+      formatted = formatted.replace(/([.!?])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break at dialogue boundaries - after closing quote followed by capital letter
+      formatted = formatted.replace(/([""])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break before opening quotes after sentence endings
+      formatted = formatted.replace(/([.!?])\s+([""])/g, '$1\n\n$2');
+      
+      // Clean up: remove multiple consecutive newlines
+      formatted = formatted.replace(/\n{3,}/g, '\n\n');
+      
+      // Trim each paragraph
+      formatted = formatted
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    }
+    
+    // Update content if changed
+    if (formatted !== content) {
+      setContent(formatted);
+      // Auto-save after formatting
+      setTimeout(() => {
+        if (chapter) {
+          isInternalUpdateRef.current = true;
+          const updatedChapter: Chapter = {
+            ...chapter,
+            content: formatted,
+            updatedAt: Date.now(),
+          };
+          onUpdateChapter(updatedChapter);
+          setTimeout(() => {
+            isInternalUpdateRef.current = false;
+          }, 200);
+        }
+      }, 100);
+    }
+  }, [chapter, content, onUpdateChapter]);
+
   const wordCount = getWordCount(content);
   const charCount = getCharCount(content);
 
@@ -392,6 +455,16 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               >
                 {showPreview ? <Edit size={18} /> : <Eye size={18} />}
                 <span>{showPreview ? 'Edit' : 'Preview'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={fixFormatting}
+                className="format-btn"
+                title="Fix formatting - break up large paragraphs"
+                disabled={isLocked || !content.trim()}
+              >
+                <Wand2 size={18} />
+                <span>Fix Format</span>
               </button>
               <button
                 type="button"
