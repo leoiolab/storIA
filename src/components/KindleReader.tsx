@@ -34,7 +34,8 @@ export function KindleReader({ book }: KindleReaderProps) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
   
-  // Piper TTS State
+  // TTS State
+  const [usePiperTTS, setUsePiperTTS] = useState(true); // Try Piper first, fallback to Web Speech
   const [isTTSPlaying, setIsTTSPlaying] = useState(false);
   const [isTTSPaused, setIsTTSPaused] = useState(false);
   const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
@@ -48,6 +49,14 @@ export function KindleReader({ book }: KindleReaderProps) {
   const audioQueueRef = useRef<Blob[]>([]);
   const isProcessingQueueRef = useRef(false);
   const shouldContinueProcessingRef = useRef(true);
+  
+  // Web Speech API fallback state
+  const [webSpeechVoices, setWebSpeechVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedWebSpeechVoice, setSelectedWebSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
+  const currentWordRef = useRef<HTMLSpanElement | null>(null);
 
   const wordsPerPage = useMemo(() => {
     switch (fontSize) {
@@ -96,9 +105,11 @@ export function KindleReader({ book }: KindleReaderProps) {
       // Check OPFS support first
       const opfsSupported = checkOPFSSupport();
       if (!opfsSupported) {
+        console.warn('OPFS not supported - will use Web Speech API fallback');
+        setUsePiperTTS(false);
         setIsLoadingVoices(false);
-        setTtsError('Your browser does not support OPFS (Origin Private File System), which is required for Piper TTS. Please use Chrome, Edge, or a recent version of Firefox. Private/incognito mode may also disable OPFS.');
-        console.error('OPFS not supported - Piper TTS will not work');
+        // Initialize Web Speech API instead
+        initWebSpeechAPI();
         return;
       }
       
@@ -223,6 +234,32 @@ export function KindleReader({ book }: KindleReaderProps) {
 
     initPiperTTS();
   }, [checkOPFSSupport]);
+
+  // Initialize Web Speech API (fallback)
+  const initWebSpeechAPI = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      synthRef.current = window.speechSynthesis;
+      
+      const loadVoices = () => {
+        const voices = synthRef.current?.getVoices() || [];
+        setWebSpeechVoices(voices);
+        if (voices.length > 0 && !selectedWebSpeechVoice) {
+          const englishVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+          setSelectedWebSpeechVoice(englishVoice);
+        }
+      };
+
+      loadVoices();
+      synthRef.current?.addEventListener('voiceschanged', loadVoices);
+    }
+  }, [selectedWebSpeechVoice]);
+
+  // Initialize Web Speech API on mount if Piper fails
+  useEffect(() => {
+    if (!usePiperTTS) {
+      initWebSpeechAPI();
+    }
+  }, [usePiperTTS, initWebSpeechAPI]);
 
   // Get full chapter text for TTS
   const getChapterText = useMemo(() => {
@@ -531,8 +568,12 @@ export function KindleReader({ book }: KindleReaderProps) {
       // If it's an "Entry not found" error, the voice files aren't in OPFS
       if (errorMsg.includes('Entry not found') || errorMsg.includes('not valid JSON')) {
         console.error('Voice model files not found in OPFS. This indicates the download did not save files properly.');
-        console.error('Possible causes: Browser OPFS not supported, OPFS disabled, or library bug.');
-        // Return null - this chunk failed
+        console.error('Switching to Web Speech API fallback...');
+        // Switch to Web Speech API fallback
+        setUsePiperTTS(false);
+        setTtsError('Piper TTS failed (OPFS issue). Using Web Speech API instead.');
+        // Return null for this chunk - will retry with Web Speech
+        return null;
       }
       
       return null;
@@ -607,9 +648,63 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
   }, [isTTSPlaying, isTTSPaused, ttsSpeed]);
 
+  // Web Speech API TTS functions (fallback)
+  const startWebSpeechTTS = useCallback(() => {
+    if (!getChapterText || !synthRef.current || !selectedWebSpeechVoice) {
+      return;
+    }
+
+    stopTTS();
+
+    const utterance = new SpeechSynthesisUtterance(getChapterText);
+    utterance.rate = ttsSpeed;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.voice = selectedWebSpeechVoice;
+
+    utterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        const charIndex = event.charIndex;
+        const textBefore = getChapterText.substring(0, charIndex);
+        const wordsBefore = textBefore.trim().split(/\s+/).filter(w => w.length > 0);
+        setCurrentWordIndex(wordsBefore.length);
+        
+        setTimeout(() => {
+          if (currentWordRef.current) {
+            currentWordRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    };
+
+    utterance.onend = () => {
+      setIsTTSPlaying(false);
+      setCurrentWordIndex(-1);
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Web Speech TTS Error:', event);
+      setIsTTSPlaying(false);
+    };
+
+    utteranceRef.current = utterance;
+    synthRef.current.speak(utterance);
+    setIsTTSPlaying(true);
+  }, [getChapterText, ttsSpeed, selectedWebSpeechVoice]);
+
   const startTTS = useCallback(async () => {
     if (!getChapterText) {
       setTtsError('No text to read.');
+      return;
+    }
+
+    // Stop any existing speech
+    stopTTS();
+
+    // If Piper TTS failed or OPFS isn't working, use Web Speech API fallback
+    if (!usePiperTTS || !synthRef.current) {
+      console.log('Using Web Speech API fallback');
+      startWebSpeechTTS();
       return;
     }
 
@@ -618,11 +713,12 @@ export function KindleReader({ book }: KindleReaderProps) {
     if (!selectedVoiceId || selectedVoiceId === 'undefined' || selectedVoiceId.trim().length === 0) {
       setTtsError('Please select a valid voice.');
       console.error('Invalid selectedVoiceId in startTTS:', selectedVoiceId, 'Available voices:', availableVoices);
+      // Fallback to Web Speech
+      if (synthRef.current) {
+        startWebSpeechTTS();
+      }
       return;
     }
-
-    // Stop any existing speech
-    stopTTS();
 
     // Ensure voice is downloaded (with validated ID)
     const validatedVoiceId = selectedVoiceId.trim();
@@ -641,7 +737,13 @@ export function KindleReader({ book }: KindleReaderProps) {
     
     if (!downloaded) {
       console.error('Voice download failed for:', validatedVoiceId);
-      setTtsError('Failed to download voice. Your browser may not support OPFS (Origin Private File System) which is required for Piper TTS. Please try a different browser or check browser settings.');
+      console.log('Falling back to Web Speech API');
+      setTtsError('Piper TTS unavailable. Using Web Speech API instead.');
+      // Fallback to Web Speech API
+      if (synthRef.current) {
+        startWebSpeechTTS();
+        return;
+      }
       return;
     }
 
@@ -716,10 +818,19 @@ export function KindleReader({ book }: KindleReaderProps) {
       playAudioQueue();
     } else {
       console.error('No audio was generated - all chunks failed or were empty');
+      console.log('Attempting Web Speech API fallback...');
       setIsTTSPlaying(false);
-      setTtsError('No audio was generated. Please check the console for errors and try again.');
+      
+      // Try Web Speech API as fallback
+      if (synthRef.current && selectedWebSpeechVoice) {
+        setTtsError('Piper TTS failed. Using Web Speech API instead.');
+        setUsePiperTTS(false);
+        startWebSpeechTTS();
+      } else {
+        setTtsError('No audio was generated. Please check the console for errors and try again.');
+      }
     }
-  }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, clearAndRedownloadVoice, processTextChunk, playAudioQueue]);
+  }, [getChapterText, selectedVoiceId, availableVoices, usePiperTTS, selectedWebSpeechVoice, ensureVoiceDownloaded, clearAndRedownloadVoice, processTextChunk, playAudioQueue, startWebSpeechTTS]);
 
   const stopTTS = useCallback(() => {
     console.log('Stopping TTS');
@@ -728,25 +839,48 @@ export function KindleReader({ book }: KindleReaderProps) {
       audioRef.current.pause();
       audioRef.current = null;
     }
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+    if (utteranceRef.current) {
+      utteranceRef.current = null;
+    }
     setIsTTSPlaying(false);
     setIsTTSPaused(false);
+    setCurrentWordIndex(-1);
     audioQueueRef.current = [];
     isProcessingQueueRef.current = false;
   }, []);
 
   const pauseTTS = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+    if (usePiperTTS) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsTTSPaused(true);
+    } else {
+      // Web Speech API pause
+      if (synthRef.current && synthRef.current.speaking) {
+        synthRef.current.pause();
+        setIsTTSPlaying(false);
+      }
     }
-    setIsTTSPaused(true);
-  }, []);
+  }, [usePiperTTS]);
 
   const resumeTTS = useCallback(() => {
-    setIsTTSPaused(false);
-    if (audioQueueRef.current.length > 0) {
-      playAudioQueue();
+    if (usePiperTTS) {
+      setIsTTSPaused(false);
+      if (audioQueueRef.current.length > 0) {
+        playAudioQueue();
+      }
+    } else {
+      // Web Speech API resume
+      if (synthRef.current && synthRef.current.paused) {
+        synthRef.current.resume();
+        setIsTTSPlaying(true);
+      }
     }
-  }, [playAudioQueue]);
+  }, [usePiperTTS, playAudioQueue]);
 
   const toggleTTS = useCallback(() => {
     if (isTTSPlaying) {
@@ -965,7 +1099,7 @@ export function KindleReader({ book }: KindleReaderProps) {
               <button
                 className="tts-play-btn"
                 onClick={toggleTTS}
-                disabled={isLoadingVoice || !selectedVoiceId}
+                disabled={isLoadingVoice || (usePiperTTS && !selectedVoiceId) || (!usePiperTTS && !selectedWebSpeechVoice)}
               >
                 {isLoadingVoice ? (
                   <Loader2 size={20} className="spinning" />
@@ -1002,47 +1136,82 @@ export function KindleReader({ book }: KindleReaderProps) {
                 if (audioRef.current) {
                   audioRef.current.playbackRate = newSpeed;
                 }
+                if (utteranceRef.current) {
+                  utteranceRef.current.rate = newSpeed;
+                }
               }}
             />
           </div>
 
           <div className="settings-group">
-            <label>Voice {isLoadingVoices && '(Loading...)'}</label>
-            {isLoadingVoices ? (
-              <div className="voice-loading">
-                <Loader2 size={16} className="spinning" />
-                <span>Loading voices...</span>
-              </div>
-            ) : availableVoices.length === 0 ? (
-              <div className="tts-error">
-                <p>No voices available. Please refresh the page.</p>
-              </div>
-            ) : (
-              <select
-                className="voice-selector"
-                value={selectedVoiceId || ''}
-                onChange={async (e) => {
-                  const voiceId = e.target.value;
-                  if (voiceId && voiceId !== 'undefined' && voiceId.trim().length > 0) {
-                    console.log('Selected voice:', voiceId);
-                    setSelectedVoiceId(voiceId.trim());
-                    if (isTTSPlaying) {
-                      stopTTS();
+            <label>
+              Voice {isLoadingVoices && '(Loading...)'}
+              {!usePiperTTS && <span style={{fontSize: '12px', opacity: 0.7}}> (Web Speech API)</span>}
+            </label>
+            {usePiperTTS ? (
+              isLoadingVoices ? (
+                <div className="voice-loading">
+                  <Loader2 size={16} className="spinning" />
+                  <span>Loading voices...</span>
+                </div>
+              ) : availableVoices.length === 0 ? (
+                <div className="tts-error">
+                  <p>No voices available. Please refresh the page.</p>
+                </div>
+              ) : (
+                <select
+                  className="voice-selector"
+                  value={selectedVoiceId || ''}
+                  onChange={async (e) => {
+                    const voiceId = e.target.value;
+                    if (voiceId && voiceId !== 'undefined' && voiceId.trim().length > 0) {
+                      console.log('Selected voice:', voiceId);
+                      setSelectedVoiceId(voiceId.trim());
+                      if (isTTSPlaying) {
+                        stopTTS();
+                      }
+                    } else {
+                      console.error('Invalid voice selected:', voiceId);
+                      setTtsError('Invalid voice selected. Please choose another voice.');
                     }
-                  } else {
-                    console.error('Invalid voice selected:', voiceId);
-                    setTtsError('Invalid voice selected. Please choose another voice.');
-                  }
-                }}
-              >
-                {availableVoices
-                  .filter(voice => voice && voice.id && voice.id !== 'undefined' && voice.id.trim().length > 0)
-                  .map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.name || voice.id}
+                  }}
+                >
+                  {availableVoices
+                    .filter(voice => voice && voice.id && voice.id !== 'undefined' && voice.id.trim().length > 0)
+                    .map((voice) => (
+                      <option key={voice.id} value={voice.id}>
+                        {voice.name || voice.id}
+                      </option>
+                    ))}
+                </select>
+              )
+            ) : (
+              // Web Speech API voices
+              webSpeechVoices.length === 0 ? (
+                <div className="tts-error">
+                  <p>No Web Speech voices available.</p>
+                </div>
+              ) : (
+                <select
+                  className="voice-selector"
+                  value={selectedWebSpeechVoice?.name || ''}
+                  onChange={(e) => {
+                    const voice = webSpeechVoices.find(v => v.name === e.target.value);
+                    if (voice) {
+                      setSelectedWebSpeechVoice(voice);
+                      if (isTTSPlaying) {
+                        stopTTS();
+                      }
+                    }
+                  }}
+                >
+                  {webSpeechVoices.map((voice) => (
+                    <option key={voice.name} value={voice.name}>
+                      {voice.name} ({voice.lang})
                     </option>
                   ))}
-              </select>
+                </select>
+              )
             )}
           </div>
         </div>
