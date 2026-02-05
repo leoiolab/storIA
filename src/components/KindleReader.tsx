@@ -261,6 +261,37 @@ export function KindleReader({ book }: KindleReaderProps) {
   }, [currentChapter, fontSize, lineSpacing, margins, wordsPerPage]);
 
   // Piper TTS Functions
+  const clearAndRedownloadVoice = useCallback(async (voiceId: string): Promise<boolean> => {
+    try {
+      console.log(`Clearing and re-downloading voice: ${voiceId}`);
+      // Try to remove the voice first
+      try {
+        await piperTTS.remove(voiceId);
+        console.log(`Removed existing voice: ${voiceId}`);
+      } catch (removeErr) {
+        console.warn('Could not remove voice (might not exist):', removeErr);
+      }
+      
+      // Wait a bit
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Re-download
+      setIsLoadingVoice(true);
+      await piperTTS.download(voiceId);
+      setIsLoadingVoice(false);
+      
+      // Wait longer for OPFS to sync
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      console.log(`Re-downloaded voice: ${voiceId}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear and re-download voice:', error);
+      setIsLoadingVoice(false);
+      return false;
+    }
+  }, []);
+
   const ensureVoiceDownloaded = useCallback(async (voiceId: string): Promise<boolean> => {
     // Validate voiceId
     if (!voiceId || voiceId === 'undefined' || voiceId.trim().length === 0) {
@@ -465,10 +496,11 @@ export function KindleReader({ book }: KindleReaderProps) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('TTS synthesis error:', errorMsg, error);
       
-      // If it's an "Entry not found" error, the voice might not be properly initialized
+      // If it's an "Entry not found" error, the voice files aren't in OPFS
       if (errorMsg.includes('Entry not found') || errorMsg.includes('not valid JSON')) {
-        console.error('Voice model appears to be corrupted or not fully downloaded. Try re-downloading the voice.');
-        // Don't return null immediately - might be recoverable
+        console.error('Voice model files not found in OPFS. This indicates the download did not save files properly.');
+        console.error('Possible causes: Browser OPFS not supported, OPFS disabled, or library bug.');
+        // Return null - this chunk failed
       }
       
       return null;
@@ -563,9 +595,21 @@ export function KindleReader({ book }: KindleReaderProps) {
     // Ensure voice is downloaded (with validated ID)
     const validatedVoiceId = selectedVoiceId.trim();
     console.log('Calling ensureVoiceDownloaded with:', validatedVoiceId);
-    const downloaded = await ensureVoiceDownloaded(validatedVoiceId);
+    let downloaded = await ensureVoiceDownloaded(validatedVoiceId);
+    
+    // If download "succeeds" but stored() shows empty, try clearing and re-downloading
+    if (downloaded) {
+      const stored = await piperTTS.stored();
+      const storedArray = Array.isArray(stored) ? stored : Object.keys(stored || {});
+      if (!storedArray.includes(validatedVoiceId)) {
+        console.warn('Download reported success but voice not in stored(). Clearing and re-downloading...');
+        downloaded = await clearAndRedownloadVoice(validatedVoiceId);
+      }
+    }
+    
     if (!downloaded) {
       console.error('Voice download failed for:', validatedVoiceId);
+      setTtsError('Failed to download voice. Your browser may not support OPFS (Origin Private File System) which is required for Piper TTS. Please try a different browser or check browser settings.');
       return;
     }
 
@@ -643,7 +687,7 @@ export function KindleReader({ book }: KindleReaderProps) {
       setIsTTSPlaying(false);
       setTtsError('No audio was generated. Please check the console for errors and try again.');
     }
-  }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
+  }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, clearAndRedownloadVoice, processTextChunk, playAudioQueue]);
 
   const stopTTS = useCallback(() => {
     console.log('Stopping TTS');
