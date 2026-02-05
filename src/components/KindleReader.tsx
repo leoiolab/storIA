@@ -306,31 +306,49 @@ export function KindleReader({ book }: KindleReaderProps) {
         console.log('Downloading voice:', trimmedVoiceId);
         
         // Wrap download in try-catch to handle any internal undefined issues
+        // The Piper TTS library may try to download multiple files internally,
+        // and some of those calls might fail with 404 for metadata files.
+        // This is harmless as long as the main model downloads successfully.
         try {
           await piperTTS.download(trimmedVoiceId, (progress) => {
             // Progress callback - could show progress UI if needed
             if (progress) {
-              // Log progress details for debugging
+              // Log progress details for debugging (but suppress undefined URL warnings)
               if (progress.url) {
-                console.log(`Download progress for ${trimmedVoiceId}:`, progress.url, progress.loaded, '/', progress.total);
-                // Check if URL contains undefined
-                if (progress.url && progress.url.includes('undefined')) {
-                  console.error('WARNING: Progress callback received URL with undefined:', progress.url);
+                const urlStr = String(progress.url);
+                // Only log if URL doesn't contain undefined (to reduce noise)
+                if (!urlStr.includes('undefined')) {
+                  if (progress.loaded && progress.total) {
+                    console.log(`Download progress for ${trimmedVoiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
+                  }
                 }
-              }
-              if (progress.loaded && progress.total) {
+              } else if (progress.loaded && progress.total) {
                 console.log(`Downloading ${trimmedVoiceId}: ${Math.round((progress.loaded * 100) / progress.total)}%`);
               }
             }
           });
         } catch (downloadErr) {
-          // Check if error is related to undefined
+          // Check if error is related to undefined or 404 (likely harmless metadata file errors)
           const errMsg = downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
           if (errMsg.includes('undefined') || errMsg.includes('404')) {
-            console.error('Download error related to undefined:', errMsg);
-            // Don't fail completely if it's just a metadata file issue
-            // The main model might have downloaded successfully
-            console.warn('Continuing despite download error - model may still be usable');
+            // These are likely harmless metadata file errors - the main model may still work
+            console.warn('Download encountered metadata file error (likely harmless):', errMsg);
+            // Check if the voice was actually stored successfully
+            try {
+              const storedAfter = await piperTTS.stored();
+              const storedArray = Array.isArray(storedAfter) ? storedAfter : Object.keys(storedAfter || {});
+              if (storedArray.includes(trimmedVoiceId)) {
+                console.log('Voice was stored successfully despite metadata error');
+                setIsLoadingVoice(false);
+                return true; // Success despite the error
+              }
+            } catch (checkErr) {
+              console.warn('Could not verify if voice was stored:', checkErr);
+            }
+            // If we can't verify, assume it failed
+            setIsLoadingVoice(false);
+            setTtsError('Voice download encountered an error. Please try again.');
+            return false;
           } else {
             throw downloadErr; // Re-throw if it's a different error
           }
