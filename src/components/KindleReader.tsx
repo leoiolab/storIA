@@ -389,12 +389,23 @@ export function KindleReader({ book }: KindleReaderProps) {
     try {
       // Remove quotes for TTS (they're just formatting)
       const cleanText = text.replace(/[""]/g, '');
-      if (!cleanText.trim()) return null;
+      if (!cleanText.trim()) {
+        console.log('Empty text after cleaning, skipping');
+        return null;
+      }
 
+      console.log('Synthesizing text chunk:', cleanText.substring(0, 50) + '...', 'with voice:', voiceId);
       const wav = await piperTTS.predict({
         text: cleanText,
         voiceId: voiceId.trim(),
       });
+      
+      if (!wav || !(wav instanceof Blob)) {
+        console.error('Invalid WAV blob returned from predict');
+        return null;
+      }
+      
+      console.log('Successfully synthesized audio blob, size:', wav.size, 'bytes');
       return wav;
     } catch (error) {
       console.error('TTS synthesis error:', error);
@@ -403,42 +414,68 @@ export function KindleReader({ book }: KindleReaderProps) {
   }, []);
 
   const playAudioQueue = useCallback(async () => {
-    if (isProcessingQueueRef.current) return;
+    if (isProcessingQueueRef.current) {
+      console.log('Audio queue already processing, skipping');
+      return;
+    }
     
     isProcessingQueueRef.current = true;
+    console.log('Starting audio queue playback, queue length:', audioQueueRef.current.length);
 
     while (audioQueueRef.current.length > 0 && isTTSPlaying && !isTTSPaused) {
       const blob = audioQueueRef.current.shift();
-      if (!blob) continue;
+      if (!blob) {
+        console.warn('Empty blob in queue, skipping');
+        continue;
+      }
 
+      console.log('Playing audio chunk, remaining in queue:', audioQueueRef.current.length);
+      
       await new Promise<void>((resolve) => {
         const audio = new Audio();
-        audio.src = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
+        audio.src = blobUrl;
         audio.playbackRate = ttsSpeed;
         
+        audio.onloadeddata = () => {
+          console.log('Audio loaded, starting playback');
+        };
+        
         audio.onended = () => {
-          URL.revokeObjectURL(audio.src);
+          console.log('Audio chunk finished playing');
+          URL.revokeObjectURL(blobUrl);
           resolve();
         };
         
-        audio.onerror = () => {
-          URL.revokeObjectURL(audio.src);
+        audio.onerror = (error) => {
+          console.error('Audio playback error:', error, audio.error);
+          URL.revokeObjectURL(blobUrl);
           resolve();
         };
 
-        audio.play().catch((error) => {
-          console.error('Audio play error:', error);
-          URL.revokeObjectURL(audio.src);
+        audioRef.current = audio;
+        
+        // Play the audio
+        audio.play().then(() => {
+          console.log('Audio play() promise resolved');
+        }).catch((error) => {
+          console.error('Audio play() promise rejected:', error);
+          URL.revokeObjectURL(blobUrl);
           resolve();
         });
-
-        audioRef.current = audio;
       });
+      
+      // Small delay between chunks for smoother playback
+      if (audioQueueRef.current.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
     isProcessingQueueRef.current = false;
+    console.log('Audio queue playback finished, remaining:', audioQueueRef.current.length);
     
     if (audioQueueRef.current.length === 0 && isTTSPlaying) {
+      console.log('All audio chunks played, stopping TTS');
       setIsTTSPlaying(false);
       setIsTTSPaused(false);
     }
@@ -490,17 +527,39 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
 
     // Process sentences sequentially and add to queue
-    console.log('Processing text chunks with voice:', voiceIdForProcessing);
+    console.log('Processing text chunks with voice:', voiceIdForProcessing, 'Sentences:', sentences.length);
+    
+    // Process all sentences first, then play
+    const audioBlobs: Blob[] = [];
     for (const sentence of sentences) {
-      if (!isTTSPlaying || isTTSPaused) break;
+      if (!isTTSPlaying || isTTSPaused) {
+        console.log('TTS stopped or paused during processing');
+        break;
+      }
       
+      console.log('Processing sentence:', sentence.substring(0, 50) + '...');
       const blob = await processTextChunk(sentence, voiceIdForProcessing);
       if (blob) {
-        audioQueueRef.current.push(blob);
-        // Start playing if this is the first chunk
-        if (audioQueueRef.current.length === 1) {
-          playAudioQueue();
-        }
+        audioBlobs.push(blob);
+        console.log('Added audio blob to queue, total:', audioBlobs.length);
+      } else {
+        console.warn('Failed to generate audio for sentence');
+      }
+    }
+    
+    // Add all blobs to queue
+    audioQueueRef.current = audioBlobs;
+    console.log('All audio blobs processed, queue length:', audioQueueRef.current.length);
+    
+    // Start playing the queue
+    if (audioQueueRef.current.length > 0 && isTTSPlaying && !isTTSPaused) {
+      console.log('Starting audio queue playback');
+      playAudioQueue();
+    } else {
+      console.warn('Not starting playback - queue empty or TTS stopped');
+      if (audioQueueRef.current.length === 0) {
+        setIsTTSPlaying(false);
+        setTtsError('No audio was generated. Please try again.');
       }
     }
   }, [getChapterText, selectedVoiceId, availableVoices, ensureVoiceDownloaded, processTextChunk, playAudioQueue]);
