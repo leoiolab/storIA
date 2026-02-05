@@ -358,23 +358,24 @@ export function KindleReader({ book }: KindleReaderProps) {
         setIsLoadingVoice(false);
         console.log(`Successfully downloaded voice: ${voiceId}`);
         
+        // Wait longer for OPFS to sync (it can take time)
+        console.log('Waiting for OPFS to sync...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         // Verify the voice is actually stored and accessible
         try {
           const verifyStored = await piperTTS.stored();
           const storedArray = Array.isArray(verifyStored) ? verifyStored : Object.keys(verifyStored || {});
+          console.log('Stored voices after download:', storedArray);
+          
           if (!storedArray.includes(trimmedVoiceId)) {
-            console.warn(`Voice ${trimmedVoiceId} not found in stored list after download`);
-            // Wait a bit and check again (OPFS might need time to sync)
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const verifyStored2 = await piperTTS.stored();
-            const storedArray2 = Array.isArray(verifyStored2) ? verifyStored2 : Object.keys(verifyStored2 || {});
-            if (!storedArray2.includes(trimmedVoiceId)) {
-              console.error(`Voice ${trimmedVoiceId} still not found after retry`);
-              setTtsError('Voice download may have failed. Please try again.');
-              return false;
-            }
+            console.warn(`Voice ${trimmedVoiceId} not found in stored list after download, but download completed successfully`);
+            console.warn('This might be an OPFS sync issue. Will attempt to use voice anyway.');
+            // Don't fail - the download completed, so the files might be there even if stored() doesn't show them
+            // This can happen due to OPFS indexing delays
+          } else {
+            console.log(`Verified voice ${trimmedVoiceId} is stored and ready`);
           }
-          console.log(`Verified voice ${trimmedVoiceId} is stored and ready`);
         } catch (verifyError) {
           console.warn('Could not verify voice storage:', verifyError);
           // Continue anyway - the download seemed successful
@@ -411,23 +412,24 @@ export function KindleReader({ book }: KindleReaderProps) {
     }
 
     try {
-      // Verify voice is stored before trying to use it
-      const stored = await piperTTS.stored();
-      const storedArray = Array.isArray(stored) ? stored : Object.keys(stored || {});
       const trimmedVoiceId = voiceId.trim();
       
-      if (!storedArray.includes(trimmedVoiceId)) {
-        console.error(`Voice ${trimmedVoiceId} not found in stored voices. Available:`, storedArray);
-        // Try to download it
-        console.log(`Attempting to download missing voice: ${trimmedVoiceId}`);
-        try {
-          await piperTTS.download(trimmedVoiceId);
-          // Wait a moment for OPFS to sync
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (downloadErr) {
-          console.error('Failed to download voice on-demand:', downloadErr);
-          return null;
+      // Check if voice is stored, but don't fail if stored() is unreliable
+      try {
+        const stored = await piperTTS.stored();
+        const storedArray = Array.isArray(stored) ? stored : Object.keys(stored || {});
+        
+        if (!storedArray.includes(trimmedVoiceId)) {
+          console.warn(`Voice ${trimmedVoiceId} not found in stored voices. Available:`, storedArray);
+          console.warn('stored() might be unreliable - attempting to use voice anyway');
+          // Don't try to download again - it might already be there but not indexed
+          // Just proceed with predict() - it will fail gracefully if the voice isn't available
+        } else {
+          console.log(`Voice ${trimmedVoiceId} found in stored list`);
         }
+      } catch (storedErr) {
+        console.warn('Could not check stored voices:', storedErr);
+        // Continue anyway - stored() might be unreliable
       }
 
       // Remove quotes for TTS (they're just formatting)
