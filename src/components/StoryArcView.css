@@ -56,6 +56,15 @@
   letter-spacing: 0.5px;
 }
 
+.stat-subtitle {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
 .arc-timeline {
   position: relative;
   padding: 0 0 0 40px;

@@ -24,6 +24,17 @@ function StoryArcView({ chapters, plotPoints, characters }: StoryArcViewProps) {
     0
   );
   const totalPages = Math.ceil(totalWords / 250); // Assuming ~250 words per page
+  // Calculate total characters for TTS cost estimation
+  const totalCharacters = sortedChapters.reduce((sum, ch) => {
+    // If chapter has sections, sum characters from all sections
+    if (ch.sections && ch.sections.length > 0) {
+      return sum + ch.sections.reduce((sectionSum, section) => {
+        return sectionSum + (section.content ? section.content.length : 0);
+      }, 0);
+    }
+    // Otherwise use the main content
+    return sum + (ch.content ? ch.content.length : 0);
+  }, 0);
 
   // Plot point categories with colors
   const categoryColors = {
@@ -54,6 +65,11 @@ function StoryArcView({ chapters, plotPoints, characters }: StoryArcViewProps) {
           <div className="stat">
             <span className="stat-value">{characters.length}</span>
             <span className="stat-label">Characters</span>
+          </div>
+          <div className="stat">
+            <span className="stat-value">{totalCharacters.toLocaleString()}</span>
+            <span className="stat-label">Text Characters</span>
+            <span className="stat-subtitle">(for TTS cost)</span>
           </div>
           <div className="stat">
             <span className="stat-value">{plotPoints.length}</span>

@@ -135,54 +135,6 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
 
-  // Fix formatting for active section - break up large paragraphs
-  const fixSectionFormatting = useCallback(() => {
-    const currentActiveSection = sections.find(s => s.id === activeSectionId);
-    if (!currentActiveSection || !currentActiveSection.content.trim()) return;
-
-    let formatted = currentActiveSection.content.trim();
-    
-    // If content already has paragraph breaks, just clean them up
-    if (formatted.includes('\n\n')) {
-      formatted = formatted
-        .split(/\n\n+/)
-        .map(p => p.trim())
-        .filter(p => p.length > 0)
-        .join('\n\n');
-    } else {
-      // Content is one big paragraph - break it up intelligently
-      // Strategy: Break after sentences ending with .!? followed by space and capital letter
-      // Also break at dialogue boundaries
-      
-      // Normalize any existing single newlines
-      formatted = formatted.replace(/\n+/g, ' ');
-      
-      // Break at sentence endings followed by capital letters (new paragraph)
-      formatted = formatted.replace(/([.!?])\s+([A-Z][a-z])/g, '$1\n\n$2');
-      
-      // Break at dialogue boundaries - after closing quote followed by capital letter
-      formatted = formatted.replace(/([""])\s+([A-Z][a-z])/g, '$1\n\n$2');
-      
-      // Break before opening quotes after sentence endings
-      formatted = formatted.replace(/([.!?])\s+([""])/g, '$1\n\n$2');
-      
-      // Clean up: remove multiple consecutive newlines
-      formatted = formatted.replace(/\n{3,}/g, '\n\n');
-      
-      // Trim each paragraph
-      formatted = formatted
-        .split('\n\n')
-        .map(p => p.trim())
-        .filter(p => p.length > 0)
-        .join('\n\n');
-    }
-    
-    // Update section content if changed
-    if (formatted !== currentActiveSection.content) {
-      handleSectionUpdate(currentActiveSection.id, { content: formatted });
-    }
-  }, [sections, activeSectionId, handleSectionUpdate]);
-
   const saveSections = useCallback((updatedSections: ChapterSection[]) => {
     if (!chapter) return;
 
@@ -295,6 +247,54 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
       return updated;
     });
   }, [saveSections]);
+
+  // Fix formatting for active section - break up large paragraphs
+  const fixSectionFormatting = useCallback(() => {
+    const currentActiveSection = sections.find(s => s.id === activeSectionId);
+    if (!currentActiveSection || !currentActiveSection.content.trim()) return;
+
+    let formatted = currentActiveSection.content.trim();
+    
+    // If content already has paragraph breaks, just clean them up
+    if (formatted.includes('\n\n')) {
+      formatted = formatted
+        .split(/\n\n+/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    } else {
+      // Content is one big paragraph - break it up intelligently
+      // Strategy: Break after sentences ending with .!? followed by space and capital letter
+      // Also break at dialogue boundaries
+      
+      // Normalize any existing single newlines
+      formatted = formatted.replace(/\n+/g, ' ');
+      
+      // Break at sentence endings followed by capital letters (new paragraph)
+      formatted = formatted.replace(/([.!?])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break at dialogue boundaries - after closing quote followed by capital letter
+      formatted = formatted.replace(/([""])\s+([A-Z][a-z])/g, '$1\n\n$2');
+      
+      // Break before opening quotes after sentence endings
+      formatted = formatted.replace(/([.!?])\s+([""])/g, '$1\n\n$2');
+      
+      // Clean up: remove multiple consecutive newlines
+      formatted = formatted.replace(/\n{3,}/g, '\n\n');
+      
+      // Trim each paragraph
+      formatted = formatted
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .join('\n\n');
+    }
+    
+    // Update section content if changed
+    if (formatted !== currentActiveSection.content) {
+      handleSectionUpdate(currentActiveSection.id, { content: formatted });
+    }
+  }, [sections, activeSectionId, handleSectionUpdate]);
 
   const handleAddSection = () => {
     const newSection: ChapterSection = {
