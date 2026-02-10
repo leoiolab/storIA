@@ -59,6 +59,25 @@ function App() {
     []
   );
 
+  // Helper function to handle authentication errors
+  const handleAuthError = useCallback((error: any) => {
+    if (error?.message?.includes('Invalid or expired token') || 
+        error?.message?.includes('Authentication required') ||
+        error?.message?.includes('token')) {
+      // Clear token and log user out
+      CloudStorageService.clearToken();
+      setUser(null);
+      setAppData(prev => ({ ...prev, currentBookId: null }));
+      setSelectedChapter(null);
+      setSelectedCharacter(null);
+      setSelectedPlotPoint(null);
+      setView('metadata');
+      alert('Your session has expired. Please log in again.');
+      return true;
+    }
+    return false;
+  }, []);
+
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -386,9 +405,11 @@ function App() {
       setSelectedChapter(created);
       setSaveStatus('saved');
       setLastSaved(new Date());
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add chapter:', error);
-      setSaveStatus('error');
+      if (!handleAuthError(error)) {
+        setSaveStatus('error');
+      }
     }
   };
 

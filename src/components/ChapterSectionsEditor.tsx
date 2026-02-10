@@ -104,22 +104,38 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
       const currentActiveSectionExists = targetActiveSectionId && newSections.find(s => s.id === targetActiveSectionId);
       
       // Only update sections if they actually changed (to avoid unnecessary re-renders)
-      const sectionsChanged = JSON.stringify(sections) !== JSON.stringify(newSections);
+      // Compare sections by their IDs and content to detect real changes
+      const sectionsChanged = sections.length !== newSections.length || 
+        sections.some((s, idx) => {
+          const newSection = newSections.find(ns => ns.id === s.id);
+          return !newSection || newSection.content !== s.content || newSection.title !== s.title;
+        });
+      
       if (sectionsChanged) {
-        setSections(newSections);
+        // Preserve exact section content - don't modify it
+        setSections(newSections.map(s => ({ ...s })));
       }
       
       // Preserve active section if it still exists, otherwise set to first section
-      if (targetActiveSectionId && currentActiveSectionExists) {
-        // Pending or current active section exists - use it
+      // Priority: pendingActiveSectionIdRef > activeSectionId > first section
+      if (pendingActiveSectionIdRef.current) {
+        // We have a pending section ID (from handleAddSection) - prioritize it
+        const pendingExists = newSections.find(s => s.id === pendingActiveSectionIdRef.current);
+        if (pendingExists) {
+          setActiveSectionId(pendingActiveSectionIdRef.current);
+          // Don't clear pending yet - wait until we're sure it's set
+          setTimeout(() => {
+            pendingActiveSectionIdRef.current = null;
+          }, 100);
+        } else {
+          // Pending section doesn't exist yet (might be in flight) - keep waiting
+          // Don't change activeSectionId yet
+        }
+      } else if (targetActiveSectionId && currentActiveSectionExists) {
+        // Pending cleared, but target section exists - use it
         if (targetActiveSectionId !== activeSectionId) {
           setActiveSectionId(targetActiveSectionId);
         }
-        pendingActiveSectionIdRef.current = null; // Clear pending
-      } else if (targetActiveSectionId && !currentActiveSectionExists) {
-        // Pending section doesn't exist (shouldn't happen, but handle gracefully)
-        setActiveSectionId(newSections[0]?.id || null);
-        pendingActiveSectionIdRef.current = null;
       } else if (activeSectionId && !currentActiveSectionExists) {
         // Active section was deleted or doesn't exist anymore - set to first section
         setActiveSectionId(newSections[0]?.id || null);
@@ -130,6 +146,20 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
       // If activeSectionId exists and the section still exists, keep it (don't reset to first)
     }
   }, [chapter, onUpdateChapter, activeSectionId]);
+
+  // Ensure pending active section is set when sections update
+  useEffect(() => {
+    if (pendingActiveSectionIdRef.current && sections.length > 0) {
+      const pendingSection = sections.find(s => s.id === pendingActiveSectionIdRef.current);
+      if (pendingSection && activeSectionId !== pendingActiveSectionIdRef.current) {
+        setActiveSectionId(pendingActiveSectionIdRef.current);
+        // Clear pending after a short delay to ensure it's set
+        setTimeout(() => {
+          pendingActiveSectionIdRef.current = null;
+        }, 50);
+      }
+    }
+  }, [sections, activeSectionId]);
 
   const getWordCount = (text: string) => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -145,15 +175,16 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
 
     // Combine all sections for legacy content field (for backward compatibility)
     // Section titles are for reference only - don't include them in the final text
+    // Preserve section boundaries by not trimming individual sections
     const sortedSections = updatedSections.sort((a, b) => a.order - b.order);
     const combinedContent = sortedSections
       .map((s) => {
-        if (!s.content || !s.content.trim()) return '';
-        return s.content.trim();
+        if (!s.content) return '';
+        // Preserve the exact content, only trim empty sections
+        return s.content.trim() || '';
       })
-      .filter(Boolean)
-      .join('\n\n')
-      .trim();
+      .filter(content => content.length > 0)
+      .join('\n\n');
 
     const updatedChapter: Chapter = {
       ...chapter,
@@ -308,11 +339,18 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
     };
     
     const updated = [...sections, newSection];
-    setSections(updated);
-    // Set pending ref first, then set state, so useEffect knows to preserve this section
+    
+    // Set pending ref BEFORE updating sections to ensure useEffect preserves it
     pendingActiveSectionIdRef.current = newSection.id;
+    // Set active section immediately
     setActiveSectionId(newSection.id);
-    saveSections(updated); // Save immediately when adding
+    // Update sections state
+    setSections(updated);
+    
+    // Save immediately when adding - use setTimeout to ensure state updates first
+    setTimeout(() => {
+      saveSections(updated);
+    }, 0);
   };
 
   const handleDeleteSection = (sectionId: string) => {

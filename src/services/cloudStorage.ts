@@ -59,10 +59,12 @@ export class CloudStorageService {
         headers,
       });
 
-      if (response.status === 401) {
-        // Token expired or invalid
+      if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid (401 = Unauthorized, 403 = Forbidden)
         this.clearToken();
-        throw new Error('Authentication required');
+        const errorData = await response.json().catch(() => ({ error: 'Authentication required' }));
+        const errorMessage = errorData.error || errorData.message || 'Invalid or expired token';
+        throw new Error(errorMessage);
       }
 
       if (!response.ok) {
@@ -70,7 +72,7 @@ export class CloudStorageService {
         console.error(`[CloudStorage] Request failed: ${response.status}`, error);
         
         // Include more details in error message for debugging
-        let errorMessage = error.error || `Request failed with status ${response.status}`;
+        let errorMessage = error.error || error.message || `Request failed with status ${response.status}`;
         if (error.details) {
           errorMessage += `: ${error.details}`;
         }

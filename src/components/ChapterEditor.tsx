@@ -87,14 +87,14 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
         if (sectionsChanged && chapter.sections && chapter.sections.length > 0) {
           const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
           // Section titles are for reference only - don't include them in the final text
+          // Preserve section boundaries by not trimming individual sections
           const combinedContent = sortedSections
             .map((s) => {
-              if (!s.content || !s.content.trim()) return '';
-              return s.content.trim();
+              if (!s.content) return '';
+              return s.content.trim() || '';
             })
-            .filter(Boolean)
-            .join('\n\n')
-            .trim();
+            .filter(content => content.length > 0)
+            .join('\n\n');
           if (content !== combinedContent) setContent(combinedContent);
         } else if (content !== chapter.content) {
           setContent(chapter.content);
@@ -124,14 +124,14 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       // In sections view - ensure sections are saved with current title and lock status
       const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
       // Section titles are for reference only - don't include them in the final text
+      // Preserve section boundaries by not trimming individual sections
       const combinedContent = sortedSections
         .map((s) => {
-          if (!s.content || !s.content.trim()) return '';
-          return s.content.trim();
+          if (!s.content) return '';
+          return s.content.trim() || '';
         })
-        .filter(Boolean)
-        .join('\n\n')
-        .trim();
+        .filter(content => content.length > 0)
+        .join('\n\n');
       
       const totalWordCount = chapter.sections.reduce((sum, s) => {
         return sum + (s.wordCount || s.content.trim().split(/\s+/).filter((w: string) => w.length > 0).length);
@@ -148,42 +148,15 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       };
       onUpdateChapter(updatedChapter);
     } else {
-      // In single view - check if values have changed
-      if (title === chapter.title && content === chapter.content && isLocked === (chapter.isLocked || false)) {
+      // In single view (read-only) - don't save content changes, only metadata
+      if (title === chapter.title && isLocked === (chapter.isLocked || false)) {
         isInternalUpdateRef.current = false;
         return;
-      }
-      
-      // If chapter has sections, we need to update sections from the single content view
-      let updatedSections = chapter.sections;
-      if (chapter.sections && chapter.sections.length > 0 && content !== chapter.content) {
-        // Content was edited in single view - need to update sections
-        // Try to preserve section structure by splitting content proportionally
-        const words = content.trim().split(/\s+/);
-        const totalWords = words.length;
-        const sectionCount = chapter.sections.length;
-        const wordsPerSection = Math.ceil(totalWords / sectionCount);
-        
-        updatedSections = chapter.sections.map((section, index) => {
-          const startIndex = index * wordsPerSection;
-          const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
-          const sectionWords = words.slice(startIndex, endIndex);
-          const sectionContent = sectionWords.join(' ');
-          
-          return {
-            ...section,
-            content: sectionContent,
-            wordCount: sectionWords.length,
-            updatedAt: Date.now(),
-          };
-        });
       }
       
       const updatedChapter: Chapter = {
         ...chapter,
         title,
-        content,
-        sections: updatedSections,
         isLocked,
         updatedAt: Date.now(),
       };
@@ -394,55 +367,22 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
                     // Switching from sections to single - update content from sections
                     const sortedSections = chapter.sections.sort((a, b) => a.order - b.order);
                     // Section titles are for reference only - don't include them in the final text
+                    // Preserve section boundaries by not trimming individual sections
                     const combinedContent = sortedSections
                       .map((s) => {
-                        if (!s.content || !s.content.trim()) return '';
-                        return s.content.trim();
+                        if (!s.content) return '';
+                        return s.content.trim() || '';
                       })
-                      .filter(Boolean)
-                      .join('\n\n')
-                      .trim();
+                      .filter(content => content.length > 0)
+                      .join('\n\n');
                     if (content !== combinedContent) {
                       setContent(combinedContent);
                     }
-                  } else if (!useSections && content && chapter.sections && chapter.sections.length > 0) {
-                    // Switching from single to sections - update sections from content
-                    // Split content proportionally back into sections
-                    const words = content.trim().split(/\s+/);
-                    const totalWords = words.length;
-                    const sectionCount = chapter.sections.length;
-                    const wordsPerSection = Math.ceil(totalWords / sectionCount);
-                    
-                    const updatedSections = chapter.sections.map((section, index) => {
-                      const startIndex = index * wordsPerSection;
-                      const endIndex = Math.min(startIndex + wordsPerSection, totalWords);
-                      const sectionWords = words.slice(startIndex, endIndex);
-                      const sectionContent = sectionWords.join(' ');
-                      
-                      return {
-                        ...section,
-                        content: sectionContent,
-                        wordCount: sectionWords.length,
-                        updatedAt: Date.now(),
-                      };
-                    });
-                    
-                    // Save updated sections immediately
-                    isInternalUpdateRef.current = true;
-                    onUpdateChapter({
-                      ...chapter,
-                      sections: updatedSections,
-                      content: content,
-                      updatedAt: Date.now(),
-                    });
-                    setTimeout(() => {
-                      isInternalUpdateRef.current = false;
-                    }, 200);
                   }
                   setUseSections(!useSections);
                 }}
                 className={`toggle-btn ${useSections ? 'active' : ''}`}
-                title={useSections ? 'Switch to single editor' : 'Switch to sections'}
+                title={useSections ? 'Switch to single view (read-only)' : 'Switch to sections (editable)'}
               >
                 <FileText size={18} />
                 <span>{useSections ? 'Sections' : 'Single'}</span>
@@ -460,8 +400,8 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
                 type="button"
                 onClick={fixFormatting}
                 className="format-btn"
-                title="Fix formatting - break up large paragraphs"
-                disabled={isLocked || !content.trim()}
+                title="Fix formatting - break up large paragraphs (only available in Sections mode)"
+                disabled={isLocked || !content.trim() || !useSections}
               >
                 <Wand2 size={18} />
                 <span>Fix Format</span>
@@ -524,9 +464,10 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
               ref={contentTextareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Start writing your chapter..."
+              placeholder="Start writing your chapter... (Switch to Sections mode to edit)"
               className="chapter-content-textarea"
-              disabled={isLocked}
+              disabled={true}
+              readOnly={true}
             />
           )}
         </div>
