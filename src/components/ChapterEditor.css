@@ -134,8 +134,10 @@
   }
 
   .chapter-editor .editor-content {
-    /* Give section editor a proper height so the text box is fully visible */
-    min-height: min(55dvh, 450px);
+    /* Reserve enough height so section editor (header + title + textarea) is visible */
+    min-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .chapter-editor .editor-header {
