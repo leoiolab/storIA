@@ -219,6 +219,15 @@
 
 /* Responsive - tablet and mobile */
 @media (max-width: 768px) {
+  /* Editor area: size to content and scroll so full section editor (including textarea) is visible */
+  .content > *:not(.top-navigation) {
+    flex: none;
+    min-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .app.agent-open .content {
     margin-right: 0;
   }

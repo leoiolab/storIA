@@ -15,14 +15,30 @@ export interface ChapterSectionsEditorRef {
   save: () => void;
 }
 
+const MOBILE_BREAKPOINT = 768;
+
+function getMobileContentHeight(): number | null {
+  if (typeof window === 'undefined' || window.innerWidth > MOBILE_BREAKPOINT) return null;
+  const vh = window.innerHeight;
+  return Math.max(280, Math.min(400, Math.floor(vh * 0.45)));
+}
+
 const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectionsEditorProps>(
   ({ chapter, onUpdateChapter, isLocked, showPreview = false }, ref) => {
   const [sections, setSections] = useState<ChapterSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [mobileContentHeight, setMobileContentHeight] = useState<number | null>(getMobileContentHeight);
   const sectionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const lastChapterIdRef = useRef<string | null>(null);
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingActiveSectionIdRef = useRef<string | null>(null);
+
+  // On mobile, keep section content height in sync with viewport
+  useEffect(() => {
+    const updateHeight = () => setMobileContentHeight(getMobileContentHeight());
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   // Initialize sections from chapter
   useEffect(() => {
@@ -462,7 +478,10 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
             </div>
           </div>
           
-          <div className="section-editor-content">
+          <div
+            className="section-editor-content"
+            style={mobileContentHeight != null ? { height: mobileContentHeight, minHeight: mobileContentHeight } : undefined}
+          >
             {showPreview ? (
               <div className="section-content-preview">
                 {activeSection.content.split(/\n\n+/).map((para, idx) => {
@@ -494,6 +513,7 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
                   placeholder="Write your section content here..."
                   className="section-content-textarea"
                   disabled={isLocked}
+                  style={mobileContentHeight != null ? { height: Math.max(260, mobileContentHeight - 40), minHeight: Math.max(260, mobileContentHeight - 40) } : undefined}
                 />
                 {isOverLimit && (
                   <div className="section-warning">
