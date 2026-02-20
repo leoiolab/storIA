@@ -341,15 +341,24 @@
     display: block;
     min-height: 0;
     height: auto;
+    padding-bottom: 8px;
   }
 
+  /* Fixed bar = section title + textarea; sections-header (dropdown + Add Section) stays in flow above */
   .section-editor-container {
-    display: block;
-    flex: none;
-    min-height: 0;
-    overflow: visible;
-    /* Space so content isn't hidden behind fixed bottom textarea bar */
-    padding-bottom: 280px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    max-height: 75vh;
+    min-height: 280px;
+    background: var(--color-surface);
+    border-top: 2px solid var(--color-border);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
   }
 
   .sections-header {
@@ -358,6 +367,7 @@
     align-items: stretch;
     gap: 12px;
     margin-bottom: 4px;
+    flex-shrink: 0;
   }
 
   .sections-header-left {
@@ -395,45 +405,34 @@
   }
 
   .section-editor-header {
-    padding: 14px 16px 16px;
+    padding: 12px 16px;
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+    flex-shrink: 0;
   }
 
-  /* On mobile: pin section content + textarea to bottom of screen so it's always visible */
+  /* Content + textarea inside the fixed bar (no longer separately fixed) */
   .section-editor-content {
-    position: fixed !important;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    display: block !important;
-    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 12px 16px;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    height: 38vh !important;
-    min-height: 260px !important;
-    max-height: 320px;
-    flex: none;
-    visibility: visible !important;
-    background: var(--color-surface);
-    border-top: 2px solid var(--color-border);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
   }
 
   .section-content-textarea {
     display: block !important;
     width: 100%;
-    height: 100% !important;
-    min-height: 220px !important;
+    flex: 1;
+    min-height: 180px !important;
     padding: 12px;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     font-size: 16px;
     box-sizing: border-box;
-    max-height: none;
-    visibility: visible !important;
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid var(--color-border);
     border-radius: 8px;
