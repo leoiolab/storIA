@@ -134,7 +134,7 @@
   }
 
   .chapter-editor .editor-content {
-    /* Reserve enough height so section editor (header + title + textarea) is visible */
+    /* Reserve height and scroll so section editor (header + title + textarea) is visible */
     min-height: 70vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
