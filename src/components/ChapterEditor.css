@@ -3,6 +3,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* Allow flex child to shrink so section editor scroll works on mobile */
   background: var(--color-surface);
 }
 
