@@ -342,6 +342,46 @@
   }
 }
 
+/* No chapter selected state */
+.chapter-editor .editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+}
+
+.chapter-editor .empty-content {
+  text-align: center;
+  padding: 32px 24px;
+  max-width: 360px;
+}
+
+.chapter-editor .empty-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-heading);
+  margin-bottom: 12px;
+}
+
+.chapter-editor .empty-content p {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.chapter-editor .empty-content strong {
+  color: var(--color-accent-strong);
+}
+
+@media (max-width: 768px) {
+  .chapter-editor .empty-content {
+    padding: 24px 20px;
+  }
+  .chapter-editor .empty-content p {
+    font-size: 16px;
+  }
+}
 
 
 

@@ -285,7 +285,7 @@ function ChapterEditor({ chapter, onUpdateChapter, onStateChange }: ChapterEdito
       <div className="editor-empty">
         <div className="empty-content">
           <h3>No Chapter Selected</h3>
-          <p>Select a chapter from the list or create a new one to start writing.</p>
+          <p>Tap <strong>Chapters</strong> in the bar above to select a chapter or create a new one.</p>
         </div>
       </div>
     );
