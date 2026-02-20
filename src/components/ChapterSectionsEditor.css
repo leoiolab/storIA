@@ -335,6 +335,16 @@
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .chapter-sections-editor {
+    /* Reserve enough height so the text area is visible below headers */
+    min-height: min(60dvh, 500px);
+  }
+
+  .section-editor-container {
+    /* Ensure the editor block gets viewport-based height so text box is fully visible */
+    min-height: min(45dvh, 400px);
+  }
+
   .sections-header {
     padding: 12px 16px;
     flex-direction: column;
@@ -385,15 +395,19 @@
 
   .section-editor-content {
     padding: 16px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     /* On mobile: make this the scroll container so scroll never disappears (iOS Safari) */
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    /* Guarantee a visible area for the text box */
+    min-height: min(35dvh, 320px);
   }
 
   .section-content-textarea {
-    min-height: 300px;
+    min-height: min(35dvh, 280px);
     padding: 12px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     font-size: 16px; /* Prevent iOS zoom */
     /* Let textarea grow with content; parent .section-editor-content scrolls */
     flex: none;
@@ -403,7 +417,8 @@
   .section-content-preview {
     flex: none;
     max-height: none;
-    min-height: 300px;
+    min-height: min(35dvh, 280px);
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   }
 }
 
