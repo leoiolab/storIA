@@ -202,15 +202,12 @@
   font-size: 13px;
 }
 
-/* Mobile responsive */
+/* Mobile responsive - allow wrap so dropdown isn't clipped by overflow */
 @media (max-width: 768px) {
   .top-navigation {
     padding: 10px 16px;
     gap: 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .top-navigation .nav-dropdown {
@@ -227,6 +224,7 @@
     min-width: 240px;
     max-width: 320px;
     max-height: 300px;
+    z-index: 1100;
   }
 
   .dropdown-content {
