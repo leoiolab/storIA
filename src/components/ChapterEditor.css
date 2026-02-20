@@ -141,21 +141,23 @@
   }
 
   .chapter-editor .editor-header {
-    padding: 12px 16px;
+    padding: 16px 16px 20px;
   }
 
   .editor-header-content {
-    gap: 10px;
+    gap: 16px;
   }
 
   .editor-header-actions {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
+    row-gap: 12px;
   }
 
   .chapter-title-input {
     font-size: 20px; /* Prevent iOS zoom */
     padding: 8px 0;
+    margin-bottom: 4px;
   }
 
   .chapter-stats {

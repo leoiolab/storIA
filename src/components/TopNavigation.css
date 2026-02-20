@@ -207,11 +207,20 @@
   .top-navigation {
     padding: 10px 16px;
     gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .top-navigation .nav-dropdown {
+    flex-shrink: 0;
   }
 
   .nav-dropdown-btn {
     padding: 8px 12px;
     font-size: 13px;
+    white-space: nowrap;
   }
 
   .nav-dropdown-menu {
