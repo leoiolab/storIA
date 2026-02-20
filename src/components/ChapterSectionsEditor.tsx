@@ -397,60 +397,186 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
   const activeSectionWordCount = activeSection ? (activeSection.wordCount || getWordCount(activeSection.content)) : 0;
   const isOverLimit = activeSectionWordCount > 2000;
 
+  const isMobile = mobileContentHeight != null;
+
   return (
     <div className="chapter-sections-editor">
-      <div className="sections-header">
-        <div className="sections-header-left">
-          <div className="section-selector-group">
-            <label htmlFor="section-select" className="section-selector-label">
-              Section:
-            </label>
-            <select
-              id="section-select"
-              value={activeSectionId || ''}
-              onChange={(e) => setActiveSectionId(e.target.value)}
-              className="section-selector"
-              disabled={isLocked || sections.length === 0}
-            >
-              {sortedSections.map((section, index) => (
-                <option key={section.id} value={section.id}>
-                  Section {index + 1}: {section.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="sections-header-info">
-            <span className="sections-count">{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
-            <span className="sections-word-count">{totalWordCount.toLocaleString()} words total</span>
-          </div>
-        </div>
-        <div className="sections-header-actions">
-          {!isLocked && (
-            <>
-              <button
-                className="add-section-btn"
-                onClick={handleAddSection}
-                title="Add new section"
-              >
-                <Plus size={18} />
-                <span>Add Section</span>
-              </button>
-              {activeSection && sections.length > 1 && (
-                <button
-                  className="delete-section-btn"
-                  onClick={() => handleDeleteSection(activeSection.id)}
-                  title="Delete current section"
+      {isMobile && activeSection ? (
+        <div className="section-editor-mobile-fixed">
+          <div className="sections-header">
+            <div className="sections-header-left">
+              <div className="section-selector-group">
+                <label htmlFor="section-select" className="section-selector-label">
+                  Section:
+                </label>
+                <select
+                  id="section-select"
+                  value={activeSectionId || ''}
+                  onChange={(e) => setActiveSectionId(e.target.value)}
+                  className="section-selector"
+                  disabled={isLocked || sections.length === 0}
                 >
-                  <Trash2 size={18} />
-                </button>
+                  {sortedSections.map((section, index) => (
+                    <option key={section.id} value={section.id}>
+                      Section {index + 1}: {section.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sections-header-info">
+                <span className="sections-count">{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
+                <span className="sections-word-count">{totalWordCount.toLocaleString()} words total</span>
+              </div>
+            </div>
+            <div className="sections-header-actions">
+              {!isLocked && (
+                <>
+                  <button
+                    className="add-section-btn"
+                    onClick={handleAddSection}
+                    title="Add new section"
+                  >
+                    <Plus size={18} />
+                    <span>Add Section</span>
+                  </button>
+                  {sections.length > 1 && (
+                    <button
+                      className="delete-section-btn"
+                      onClick={() => handleDeleteSection(activeSection.id)}
+                      title="Delete current section"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+          </div>
+          <div className="section-editor-container">
+            <div className="section-editor-header">
+              <input
+                type="text"
+                value={activeSection.title}
+                onChange={(e) => handleSectionUpdate(activeSection.id, { title: e.target.value })}
+                className="section-title-input"
+                placeholder="Section title..."
+                disabled={isLocked}
+              />
+              <div className="section-editor-meta">
+                <button
+                  type="button"
+                  onClick={fixSectionFormatting}
+                  className="section-format-btn"
+                  title="Fix formatting - break up large paragraphs"
+                  disabled={isLocked || !activeSection.content.trim()}
+                >
+                  <Wand2 size={16} />
+                  <span>Fix Format</span>
+                </button>
+                <span className="section-word-count-display">
+                  {activeSectionWordCount.toLocaleString()} words
+                  {isOverLimit && <span className="warning-badge"> (Will auto-split)</span>}
+                </span>
+              </div>
+            </div>
+            <div
+              className="section-editor-content"
+              style={{ height: mobileContentHeight ?? undefined, minHeight: mobileContentHeight ?? undefined }}
+            >
+              {showPreview ? (
+                <div className="section-content-preview">
+                  {activeSection.content.split(/\n\n+/).map((para, idx) => {
+                    if (!para.trim()) return <br key={idx} />;
+                    const formattedSegments = formatTextWithDialogue(para);
+                    return (
+                      <p key={idx} className="preview-paragraph">
+                        {formattedSegments.map((segment, segIdx) => (
+                          <span
+                            key={segIdx}
+                            className={segment.isDialogue ? 'dialogue-text' : 'narrative-text'}
+                          >
+                            {segment.text}
+                          </span>
+                        ))}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    ref={sectionTextareaRef}
+                    value={activeSection.content}
+                    onChange={(e) => handleSectionUpdate(activeSection.id, { content: e.target.value })}
+                    placeholder="Write your section content here..."
+                    className="section-content-textarea"
+                    disabled={isLocked}
+                    style={mobileContentHeight != null ? { height: Math.max(260, mobileContentHeight - 40), minHeight: Math.max(260, mobileContentHeight - 40) } : undefined}
+                  />
+                  {isOverLimit && (
+                    <div className="section-warning">
+                      ⚠️ This section exceeds 2000 words and will be automatically split into multiple sections when saved.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="sections-header">
+            <div className="sections-header-left">
+              <div className="section-selector-group">
+                <label htmlFor="section-select" className="section-selector-label">
+                  Section:
+                </label>
+                <select
+                  id="section-select"
+                  value={activeSectionId || ''}
+                  onChange={(e) => setActiveSectionId(e.target.value)}
+                  className="section-selector"
+                  disabled={isLocked || sections.length === 0}
+                >
+                  {sortedSections.map((section, index) => (
+                    <option key={section.id} value={section.id}>
+                      Section {index + 1}: {section.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sections-header-info">
+                <span className="sections-count">{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
+                <span className="sections-word-count">{totalWordCount.toLocaleString()} words total</span>
+              </div>
+            </div>
+            <div className="sections-header-actions">
+              {!isLocked && (
+                <>
+                  <button
+                    className="add-section-btn"
+                    onClick={handleAddSection}
+                    title="Add new section"
+                  >
+                    <Plus size={18} />
+                    <span>Add Section</span>
+                  </button>
+                  {activeSection && sections.length > 1 && (
+                    <button
+                      className="delete-section-btn"
+                      onClick={() => handleDeleteSection(activeSection.id)}
+                      title="Delete current section"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
 
-      {activeSection && (
-        <div className="section-editor-container">
+          {activeSection && (
+            <div className="section-editor-container">
           <div className="section-editor-header">
             <input
               type="text"
@@ -524,7 +650,9 @@ const ChapterSectionsEditor = forwardRef<ChapterSectionsEditorRef, ChapterSectio
             )}
           </div>
         </div>
-      )      }
+          )}
+        </>
+      )}
     </div>
   );
 });

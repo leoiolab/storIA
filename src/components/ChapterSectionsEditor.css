@@ -344,8 +344,8 @@
     padding-bottom: 8px;
   }
 
-  /* Fixed bar = section title + textarea; sections-header (dropdown + Add Section) stays in flow above */
-  .section-editor-container {
+  /* Mobile: one fixed panel containing dropdown + Add Section + title + textarea (scrollable) */
+  .section-editor-mobile-fixed {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -353,11 +353,25 @@
     z-index: 50;
     display: flex;
     flex-direction: column;
-    max-height: 75vh;
-    min-height: 280px;
+    max-height: 85vh;
     background: var(--color-surface);
     border-top: 2px solid var(--color-border);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section-editor-mobile-fixed .sections-header {
+    flex-shrink: 0;
+  }
+
+  .section-editor-mobile-fixed .section-editor-container {
+    position: static;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+    max-height: none;
     overflow: hidden;
   }
 
