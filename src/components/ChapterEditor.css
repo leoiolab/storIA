@@ -134,14 +134,19 @@
   }
 
   .chapter-editor .editor-content {
-    /* Reserve height and scroll so section editor (header + title + textarea) is visible */
     min-height: 70vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Space to scroll chapter header (Save, etc.) above the fixed section panel */
+    padding-bottom: 45vh;
   }
 
   .chapter-editor .editor-header {
     padding: 16px 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-surface-soft);
   }
 
   .editor-header-content {
