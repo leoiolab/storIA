@@ -217,12 +217,11 @@
   }
 }
 
-/* Responsive - tablet and mobile */
+/* Responsive - tablet and mobile: one scrollable column for editing */
 @media (max-width: 768px) {
-  /* Editor area: size to content and scroll so full section editor (including textarea) is visible */
   .content > *:not(.top-navigation) {
-    flex: none;
-    min-height: 60vh;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
