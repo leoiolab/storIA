@@ -225,6 +225,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 72px; /* Space so ASI button doesn't cover text */
   }
 
   .app.agent-open .content {
