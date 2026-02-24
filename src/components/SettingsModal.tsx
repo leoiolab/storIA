@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { X, Eye, EyeOff, Calculator } from 'lucide-react';
 import { AIConfig } from '../types';
+import { estimateTokens, getContextLimitForModel, formatTokenCount } from '../utils/tokenEstimate';
 import './Modal.css';
 
 interface SettingsModalProps {
@@ -15,6 +16,7 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
   const [apiKey, setApiKey] = useState(aiConfig.apiKey);
   const [model, setModel] = useState(aiConfig.model);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [tokenCalcText, setTokenCalcText] = useState('');
 
   useEffect(() => {
     setProvider(aiConfig.provider);
@@ -120,8 +122,8 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
                       onChange={(e) => setModel(e.target.value)}
                       className="select-field"
                     >
-                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Latest)</option>
-                      <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (200k context)</option>
+                      <option value="claude-3-opus-20240229">Claude 3 Opus (200k context)</option>
                       <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
                       <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
                     </select>
@@ -145,6 +147,35 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
                 </div>
               </>
             )}
+          </div>
+
+          <div className="form-section token-calculator-section">
+            <h3>
+              <Calculator size={18} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+              Token estimator
+            </h3>
+            <p className="form-description">
+              Estimate input tokens for your text. Useful for long-context models (200k–1M). ~4 characters per token.
+            </p>
+            <div className="form-group">
+              <label htmlFor="tokenCalc">Paste or type text to estimate tokens</label>
+              <textarea
+                id="tokenCalc"
+                value={tokenCalcText}
+                onChange={(e) => setTokenCalcText(e.target.value)}
+                placeholder="Paste a chapter, synopsis, or any text..."
+                className="input-field token-calc-textarea"
+                rows={4}
+              />
+              <p className="field-hint token-estimate-display">
+                <strong>Approx. {formatTokenCount(estimateTokens(tokenCalcText))} tokens</strong>
+                {provider !== 'none' && (
+                  <span className="token-limit-hint">
+                    {' '}· Model limit: {formatTokenCount(getContextLimitForModel(model))} input
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
 

@@ -169,6 +169,20 @@
   line-height: 1.4;
 }
 
+.token-calculator-section .token-calc-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.token-estimate-display {
+  margin-top: 8px;
+}
+
+.token-estimate-display .token-limit-hint {
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+
 .button {
   padding: 10px 20px;
   border-radius: 6px;

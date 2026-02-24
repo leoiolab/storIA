@@ -41,7 +41,7 @@ export async function chatWithAI(
         })),
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 4096,
     });
 
     const content = response.choices[0].message.content;
@@ -116,8 +116,15 @@ export async function generateChapterContent(
     ? `\n\nCharacters:\n${characters.map(c => `- ${c.name}: ${c.description}`).join('\n')}`
     : '';
 
+  const PREVIOUS_CONTEXT_CAP = 100_000;
+  const previousSnippet = previousContent
+    ? previousContent.length <= PREVIOUS_CONTEXT_CAP
+      ? previousContent
+      : previousContent.slice(-PREVIOUS_CONTEXT_CAP)
+    : '';
+
   const prompt = `Write compelling content for a book chapter titled "${chapterTitle}".
-${previousContent ? `\n\nPrevious context:\n${previousContent.slice(-500)}` : ''}
+${previousSnippet ? `\n\nPrevious context:\n${previousSnippet}` : ''}
 ${characterContext}
 ${plotContext ? `\n\nPlot context: ${plotContext}` : ''}
 
@@ -137,7 +144,7 @@ Write 2-3 paragraphs of engaging narrative that advances the story. Focus on viv
         },
       ],
       temperature: 0.9,
-      max_tokens: 1500,
+      max_tokens: 4096,
     });
 
     return response.choices[0].message.content || '';

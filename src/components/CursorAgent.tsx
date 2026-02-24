@@ -4,6 +4,7 @@ import { Book, Character, Chapter, AIConfig } from '../types';
 import type { View } from './Sidebar';
 import type { EntityState } from './CharacterEditor';
 import { chatWithAI, isAIConfigured } from '../services/ai';
+import { estimateTokens, getContextLimitForModel, formatTokenCount } from '../utils/tokenEstimate';
 import './CursorAgent.css';
 
 export interface AgentMessage {
@@ -70,6 +71,22 @@ const buildContextSummary = (
     }
     
     sections.push(chapterSection.join('\n'));
+
+    // Long-context: include previous chapter for continuity (200k–1M models)
+    const sortedChapters = [...book.chapters].sort((a, b) => a.order - b.order);
+    const prevIndex = sortedChapters.findIndex(ch => ch.id === currentChapter.id) - 1;
+    if (prevIndex >= 0) {
+      const prevChapter = sortedChapters[prevIndex];
+      const prevContent = prevChapter.sections?.length
+        ? prevChapter.sections
+            .sort((a, b) => a.order - b.order)
+            .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
+            .join('\n\n---\n\n')
+        : prevChapter.content || '';
+      if (prevContent) {
+        sections.push(`Previous chapter (for continuity): "${prevChapter.title}"\n\n${prevContent}`);
+      }
+    }
   } else if (activeView === 'chapters' && book.chapters.length) {
     const preview = book.chapters
       .slice(0, 5)
@@ -184,6 +201,15 @@ function CursorAgent({
     () => buildContextSummary(book, activeView, currentChapter, currentCharacter, chapterState, characterState),
     [book, activeView, currentChapter, currentCharacter, chapterState, characterState]
   );
+
+  const estimatedInputTokens = useMemo(() => {
+    const systemPart = contextSummary.length + 800;
+    const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+    const historyTokens = history.reduce((acc, m) => acc + estimateTokens(m.content), 0) + history.length * 4;
+    return Math.ceil(systemPart / 4) + historyTokens + estimateTokens(input);
+  }, [contextSummary, messages, input]);
+
+  const contextLimit = aiConfig?.model ? getContextLimitForModel(aiConfig.model) : 200_000;
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -879,8 +905,11 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
         </button>
       </div>
 
-      {/* Tips */}
+      {/* Tips + token estimate */}
       <div className="agent-tips">
+        <span className="agent-tip-tokens">
+          ~{formatTokenCount(estimatedInputTokens)} input · limit {formatTokenCount(contextLimit)}
+        </span>
         <span>Tip: I have full context of your book, characters, and current chapter</span>
       </div>
     </div>
