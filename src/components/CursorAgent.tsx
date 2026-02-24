@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen } from 'lucide-react';
+import { Send, Sparkles, X, RefreshCw, Copy, Check, ChevronRight, FileText, Users, BookOpen, Wand2 } from 'lucide-react';
 import { Book, Character, Chapter, AIConfig } from '../types';
 import type { View } from './Sidebar';
 import type { EntityState } from './CharacterEditor';
-import { chatWithAI, isAIConfigured } from '../services/ai';
+import { chatWithAI, isAIConfigured, enhancePromptForWriting } from '../services/ai';
 import { estimateTokens, getContextLimitForModel, formatTokenCount } from '../utils/tokenEstimate';
 import './CursorAgent.css';
 
@@ -23,6 +23,16 @@ export interface AgentMessage {
   }>;
 }
 
+function chapterContentText(chapter: Chapter): string {
+  if (chapter.sections && chapter.sections.length > 0) {
+    const sorted = [...chapter.sections].sort((a, b) => a.order - b.order);
+    return sorted
+      .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
+      .join('\n\n---\n\n');
+  }
+  return chapter.content || '';
+}
+
 const buildContextSummary = (
   book: Book,
   activeView: View,
@@ -33,106 +43,81 @@ const buildContextSummary = (
 ) => {
   const sections: string[] = [];
 
+  // --- Book metadata (as much as possible) ---
   sections.push(`Book: "${book.metadata.title}" by ${book.metadata.author || 'Unknown author'}`);
+  if (book.metadata.genre) sections.push(`Genre: ${book.metadata.genre}`);
+  if (book.metadata.synopsis) sections.push(`Synopsis: ${book.metadata.synopsis}`);
+  if (book.metadata.themes?.length) sections.push(`Themes: ${book.metadata.themes.join(', ')}`);
+  if (book.metadata.targetWordCount) sections.push(`Target word count: ${book.metadata.targetWordCount}`);
 
-  if (book.metadata.synopsis) {
-    sections.push(`Synopsis: ${book.metadata.synopsis}`);
+  // --- All characters (full details) ---
+  if (book.characters.length > 0) {
+    const characterBlocks = book.characters.map(c => {
+      const parts = [
+        `${c.name} (${c.type})`,
+        c.description ? `Description: ${c.description}` : null,
+        c.biography ? `Biography: ${c.biography}` : null,
+        c.characterArc ? `Character Arc: ${c.characterArc}` : null,
+        c.age != null ? `Age: ${c.age}` : null,
+        c.role ? `Role: ${c.role}` : null,
+        c.relationships?.length
+          ? `Relationships: ${c.relationships.map(r => r.relationshipType + (r.description ? ` (${r.description})` : '')).join('; ')}`
+          : null,
+      ].filter(Boolean);
+      return parts.join('\n');
+    });
+    sections.push('--- ALL CHARACTERS ---\n' + characterBlocks.join('\n\n'));
   }
 
+  // --- All chapters (full content: title, synopsis, notes, full text) ---
+  const sortedChapters = [...book.chapters].sort((a, b) => a.order - b.order);
+  if (sortedChapters.length > 0) {
+    const chapterBlocks = sortedChapters.map((ch, index) => {
+      const isCurrent = currentChapter?.id === ch.id;
+      const label = isCurrent ? ` [CURRENT - ${chapterState === 'new' ? 'NEW' : chapterState === 'locked' ? 'LOCKED' : 'EDIT'}]` : '';
+      const header = `Chapter ${index + 1}: "${ch.title}"${label}`;
+      const synopsis = ch.synopsis ? `Synopsis: ${ch.synopsis}` : '';
+      const notes = ch.notes ? `Author notes: ${ch.notes}` : '';
+      const content = chapterContentText(ch);
+      return [header, synopsis, notes, content ? `Content:\n${content}` : ''].filter(Boolean).join('\n');
+    });
+    sections.push('--- FULL MANUSCRIPT (all chapters) ---\n' + chapterBlocks.join('\n\n==========\n\n'));
+  }
+
+  // --- Plot points ---
+  if (book.plotPoints?.length) {
+    const plotBlock = book.plotPoints
+      .sort((a, b) => a.order - b.order)
+      .map(p => `[${p.category}] ${p.title}: ${p.description}`)
+      .join('\n');
+    sections.push('--- PLOT POINTS ---\n' + plotBlock);
+  }
+
+  // --- Timeline ---
+  if (book.timeline?.events?.length) {
+    const timelineBlock = book.timeline.events
+      .map(e => `${e.timestamp}: ${e.title} – ${e.description}`)
+      .join('\n');
+    sections.push('--- TIMELINE ---\n' + timelineBlock);
+  }
+
+  // --- Current focus and UI context ---
   if (activeView === 'metadata') {
-    sections.push('User is editing the book metadata (title, author, genre, synopsis, targets). Focus suggestions on overall story planning.');
+    sections.push('User is editing the book metadata. Focus suggestions on overall story planning.');
   }
-
   if (currentChapter) {
-    const chapterSection: string[] = [
-      `Focused Chapter: "${currentChapter.title}" (order ${currentChapter.order + 1})`
-    ];
-    if (chapterState) {
-      chapterSection.push(`Chapter State: ${chapterState === 'new' ? 'NEW - Being created for the first time' : chapterState === 'locked' ? 'LOCKED - Cannot be edited' : 'EDIT - Currently being edited'}`);
-    }
-    if (currentChapter.synopsis) {
-      chapterSection.push(`Chapter Synopsis: ${currentChapter.synopsis}`);
-    }
-    if (currentChapter.notes) {
-      chapterSection.push(`Author Notes: ${currentChapter.notes}`);
-    }
-    
-    // Include chapter content - prefer sections if available, otherwise use legacy content
-    if (currentChapter.sections && currentChapter.sections.length > 0) {
-      const sortedSections = [...currentChapter.sections].sort((a, b) => a.order - b.order);
-      const sectionsContent = sortedSections
-        .map((section, index) => {
-          return `Section ${index + 1}: "${section.title}"\n${section.content}`;
-        })
-        .join('\n\n---\n\n');
-      chapterSection.push(`Chapter Content (${sortedSections.length} section${sortedSections.length !== 1 ? 's' : ''}):\n\n${sectionsContent}`);
-    } else if (currentChapter.content) {
-      chapterSection.push(`Chapter Content:\n${currentChapter.content}`);
-    }
-    
-    sections.push(chapterSection.join('\n'));
-
-    // Long-context: include previous chapter for continuity (200k–1M models)
-    const sortedChapters = [...book.chapters].sort((a, b) => a.order - b.order);
-    const prevIndex = sortedChapters.findIndex(ch => ch.id === currentChapter.id) - 1;
-    if (prevIndex >= 0) {
-      const prevChapter = sortedChapters[prevIndex];
-      const prevContent = prevChapter.sections?.length
-        ? prevChapter.sections
-            .sort((a, b) => a.order - b.order)
-            .map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`)
-            .join('\n\n---\n\n')
-        : prevChapter.content || '';
-      if (prevContent) {
-        sections.push(`Previous chapter (for continuity): "${prevChapter.title}"\n\n${prevContent}`);
-      }
-    }
-  } else if (activeView === 'chapters' && book.chapters.length) {
-    const preview = book.chapters
-      .slice(0, 5)
-      .map(chapter => `"${chapter.title}"`)
-      .join(', ');
-    sections.push(`User is browsing chapters. Current roster: ${preview}${book.chapters.length > 5 ? ', ...' : ''}`);
+    sections.push(`User focus: currently editing chapter "${currentChapter.title}" (order ${currentChapter.order + 1}).`);
   }
-
   if (currentCharacter) {
-    const arcSnippet = currentCharacter.characterArc ? `\nCharacter Arc: ${currentCharacter.characterArc}` : '';
-    const stateInfo = characterState ? `\nCharacter State: ${characterState === 'new' ? 'NEW - Being created for the first time' : characterState === 'locked' ? 'LOCKED - Cannot be edited' : 'EDIT - Currently being edited'}` : '';
-    sections.push(
-      [
-        `Focused Character: ${currentCharacter.name} (${currentCharacter.type})`,
-        stateInfo || null,
-        currentCharacter.description ? `Description: ${currentCharacter.description}` : null,
-        arcSnippet || null,
-      ]
-        .filter(Boolean)
-        .join('\n')
-    );
-  } else if (activeView === 'characters' && book.characters.length) {
-    const listPreview = book.characters
-      .slice(0, 6)
-      .map(char => `${char.name} (${char.type})`)
-      .join(', ');
-    sections.push(`User is reviewing the character roster. Characters available: ${listPreview}${book.characters.length > 6 ? ', ...' : ''}`);
+    const stateInfo = characterState ? ` (${characterState === 'new' ? 'NEW' : characterState === 'locked' ? 'LOCKED' : 'EDIT'})` : '';
+    sections.push(`User focus: currently editing character ${currentCharacter.name}${stateInfo}.`);
   }
-
   if (activeView === 'relationships') {
-    sections.push('User is analysing relationships between characters. Highlight connections and dynamics.');
+    sections.push('User is analysing relationships between characters.');
   }
-
   if (activeView === 'storyarc') {
-    sections.push('User is working on the story arc. Provide structural guidance across beginning, middle, and end.');
+    sections.push('User is working on the story arc.');
   }
-
-  if (activeView === 'reader') {
-    sections.push('User is in reader mode, focusing on narrative flow and pacing.');
-  }
-
-  const mainCharacters = book.characters.filter(c => c.type === 'main').map(c => c.name);
-  if (mainCharacters.length > 0) {
-    sections.push(`Main Characters: ${mainCharacters.join(', ')}`);
-  }
-
   return sections.join('\n\n');
 };
 
@@ -173,6 +158,7 @@ function CursorAgent({
 }: CursorAgentProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -704,6 +690,25 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
     }
   };
 
+  const handleEnhancePrompt = async () => {
+    if (!input.trim() || !isAIConfigured() || isEnhancing || isLoading) return;
+    setIsEnhancing(true);
+    try {
+      const model = aiConfig?.model || 'gpt-4-turbo-preview';
+      const enhanced = await enhancePromptForWriting(input.trim(), book.metadata.title, model);
+      setInput(enhanced);
+    } catch (err: any) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `⚠️ Could not enhance prompt: ${err.message || 'Unknown error'}. Try again or send as-is.`,
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -896,13 +901,25 @@ IMPORTANT: Apply the requested modification and provide the updated chapter cont
           className="agent-input"
           rows={1}
         />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || isLoading}
-          className="agent-send"
-        >
-          <Send size={18} />
-        </button>
+        <div className="agent-input-actions">
+          <button
+            type="button"
+            onClick={handleEnhancePrompt}
+            disabled={!input.trim() || isLoading || isEnhancing}
+            className="agent-enhance-btn"
+            title="Enhance prompt: expand into a clearer, detailed instruction"
+          >
+            <Wand2 size={16} />
+            {isEnhancing ? '…' : 'Enhance'}
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className="agent-send"
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Tips + token estimate */}

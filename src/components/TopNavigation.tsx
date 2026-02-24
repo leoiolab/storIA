@@ -18,7 +18,7 @@ interface TopNavigationProps {
   onAddPlotPoint: (plotPoint: PlotPoint) => void;
   onDeleteCharacter?: (id: string) => void;
   onDeleteChapter?: (id: string) => void;
-  currentView: 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'reader' | 'plotpoints';
+  currentView: 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'plotpoints';
 }
 
 function TopNavigation({

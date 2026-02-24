@@ -9,7 +9,6 @@ import PlotPointEditor from './components/PlotPointEditor';
 import BookMetadataEditor from './components/BookMetadataEditor';
 import RelationshipMap from './components/RelationshipMap';
 import StoryArcView from './components/StoryArcView';
-import KindleReader from './components/KindleReader';
 import CursorAgent, { AgentMessage } from './components/CursorAgent';
 import SettingsModal from './components/SettingsModal';
 import ExportModal from './components/ExportModal';
@@ -723,9 +722,6 @@ function App() {
             characters={currentBook.characters}
           />
         );
-
-      case 'reader':
-        return <KindleReader book={currentBook} />;
 
       case 'plotpoints':
         return (

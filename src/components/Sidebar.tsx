@@ -1,8 +1,8 @@
-import { Users, BookOpen, BookText, Network, TrendingUp, BookOpenCheck, LogOut, Settings, FileDown, ChevronLeft, ChevronRight, Target } from 'lucide-react';
+import { Users, BookOpen, BookText, Network, TrendingUp, LogOut, Settings, FileDown, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { ReactNode } from 'react';
 import './Sidebar.css';
 
-export type View = 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'reader' | 'plotpoints';
+export type View = 'characters' | 'chapters' | 'metadata' | 'relationships' | 'storyarc' | 'plotpoints';
 
 interface SidebarProps {
   view: View;
@@ -76,15 +76,6 @@ function Sidebar({ view, onViewChange, children, onLogout, onOpenSettings, onOpe
         >
           <BookOpen size={20} />
           {!isCollapsed && <span>Chapters</span>}
-        </button>
-
-        <button
-          className={`nav-item ${view === 'reader' ? 'active' : ''}`}
-          onClick={() => onViewChange('reader')}
-          title="Reader View"
-        >
-          <BookOpenCheck size={20} />
-          {!isCollapsed && <span>Reader View</span>}
         </button>
 
         <button
