@@ -54,6 +54,42 @@ export async function chatWithAI(
   }
 }
 
+/**
+ * Enhances a short user prompt into a clear, detailed instruction for the writing assistant.
+ * Uses minimal context so the enhancement is fast and stays on intent.
+ */
+export async function enhancePromptForWriting(
+  userPrompt: string,
+  bookTitle: string,
+  model: string = 'gpt-4-turbo-preview'
+): Promise<string> {
+  if (!openaiClient) {
+    throw new Error('AI not configured. Please add your API key in settings.');
+  }
+  if (!userPrompt?.trim()) return userPrompt;
+
+  const systemPrompt = `You are a prompt refiner for a novel-writing app. The user has typed a short instruction for an AI writing assistant. Your job is to rewrite it as a single, clear, detailed instruction that preserves their intent but adds structure and specificity so the writing assistant can respond better. Include relevant context (e.g. "for this chapter", "in character voice") only if it fits. Reply with ONLY the enhanced instruction—no preamble, no "Here's the enhanced prompt", no quotes.`;
+
+  const userMessage = `Book: "${bookTitle}". User's instruction: ${userPrompt.trim()}`;
+
+  try {
+    const response = await openaiClient.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.4,
+      max_tokens: 500,
+    });
+    const content = response.choices[0].message.content?.trim();
+    return content || userPrompt;
+  } catch (error) {
+    console.error('Prompt enhance error:', error);
+    throw error;
+  }
+}
+
 export async function generateCharacter(
   type: 'main' | 'secondary' | 'tertiary',
   context?: string,
