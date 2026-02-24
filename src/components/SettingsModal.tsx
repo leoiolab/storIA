@@ -60,7 +60,7 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
                   if (newProvider === 'openai') {
                     setModel('gpt-4o');
                   } else if (newProvider === 'anthropic') {
-                    setModel('claude-3-5-sonnet-20241022');
+                    setModel('claude-sonnet-4-6');
                   }
                 }}
                 className="select-field"
@@ -122,8 +122,13 @@ function SettingsModal({ isOpen, aiConfig, onClose, onSave }: SettingsModalProps
                       onChange={(e) => setModel(e.target.value)}
                       className="select-field"
                     >
-                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (200k context)</option>
-                      <option value="claude-3-opus-20240229">Claude 3 Opus (200k context)</option>
+                      <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Latest, 200k / 1M beta)</option>
+                      <option value="claude-opus-4-6">Claude Opus 4.6 (Most capable, 200k / 1M beta)</option>
+                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast, 200k)</option>
+                      <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (200k)</option>
+                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (200k)</option>
+                      <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fast)</option>
+                      <option value="claude-3-opus-20240229">Claude 3 Opus (200k)</option>
                       <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
                       <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
                     </select>

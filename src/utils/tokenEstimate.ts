@@ -35,12 +35,16 @@ export const MODEL_CONTEXT_LIMITS: Record<string, number> = {
   'gpt-3.5-turbo': 16_385,
   'gpt-3.5-turbo-16k': 16_385,
   'gpt-4-turbo-preview': 128_000,
+  'claude-sonnet-4-6': 200_000,
+  'claude-opus-4-6': 200_000,
+  'claude-haiku-4-5-20251001': 200_000,
+  'claude-sonnet-4-20250514': 200_000,
   'claude-3-5-sonnet-20241022': 200_000,
   'claude-3-5-sonnet-20240620': 200_000,
+  'claude-3-5-haiku-20241022': 200_000,
   'claude-3-opus-20240229': 200_000,
   'claude-3-sonnet-20240229': 200_000,
   'claude-3-haiku-20240307': 200_000,
-  'claude-sonnet-4-20250514': 200_000,
 };
 
 /** Default context cap when model is unknown (assume long-context). */
