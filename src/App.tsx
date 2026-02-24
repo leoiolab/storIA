@@ -218,10 +218,10 @@ function App() {
         };
       });
 
-      if (nextAiConfig.apiKey) {
-        initializeAI(nextAiConfig.apiKey);
+      if (nextAiConfig.apiKey && nextAiConfig.provider !== 'none') {
+        initializeAI(nextAiConfig.apiKey, nextAiConfig.provider);
       } else {
-        initializeAI('');
+        initializeAI('', 'none');
       }
       setSelectedCharacter(null);
       setSelectedChapter(null);
@@ -263,7 +263,7 @@ function App() {
       setView('metadata');
       setSaveStatus('saved');
       setLastSaved(new Date());
-      initializeAI('');
+      initializeAI('', 'none');
     } catch (error) {
       console.error('Failed to create project:', error);
       setSaveStatus('error');
@@ -603,7 +603,7 @@ function App() {
       aiConfig: nextAiConfig,
     }));
 
-    initializeAI(sanitizedApiKey ?? '');
+    initializeAI(sanitizedApiKey ?? '', aiConfig.provider);
 
     if (!currentBook) return;
 
